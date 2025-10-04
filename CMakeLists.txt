@@ -6,6 +6,8 @@ find_package(SDL3 REQUIRED)
 
 # Find glslangValidator for shader compilation
 find_program(GLSLANG_VALIDATOR glslangValidator)
+find_program(SPIRV_CROSS spirv-cross)
+
 if(NOT GLSLANG_VALIDATOR)
     message(WARNING "glslangValidator not found. Shaders will not be compiled.")
     message(WARNING "Install with: sudo apt install glslang-tools (Ubuntu/Debian)")
@@ -13,16 +15,32 @@ if(NOT GLSLANG_VALIDATOR)
     message(WARNING "             brew install glslang (macOS)")
 endif()
 
-# Shader compilation function
-function(compile_shader SHADER_SOURCE OUTPUT_FILE)
+if(NOT SPIRV_CROSS)
+    message(WARNING "spirv-cross not found. MSL shaders will not be generated.")
+    message(WARNING "Install with: brew install spirv-cross (macOS)")
+endif()
+
+# Shader compilation function - generates both SPIR-V and MSL
+function(compile_shader SHADER_SOURCE SPIRV_OUTPUT MSL_OUTPUT)
     if(GLSLANG_VALIDATOR)
+        # Compile GLSL to SPIR-V
         add_custom_command(
-            OUTPUT ${OUTPUT_FILE}
+            OUTPUT ${SPIRV_OUTPUT}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/shaders
-            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${OUTPUT_FILE}
+            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
             DEPENDS ${SHADER_SOURCE}
-            COMMENT "Compiling shader ${SHADER_SOURCE}"
+            COMMENT "Compiling GLSL to SPIR-V: ${SHADER_SOURCE}"
         )
+
+        # Convert SPIR-V to MSL
+        if(SPIRV_CROSS)
+            add_custom_command(
+                OUTPUT ${MSL_OUTPUT}
+                COMMAND ${SPIRV_CROSS} ${SPIRV_OUTPUT} --msl --output ${MSL_OUTPUT}
+                DEPENDS ${SPIRV_OUTPUT}
+                COMMENT "Converting SPIR-V to MSL: ${SPIRV_OUTPUT}"
+            )
+        endif()
     endif()
 endfunction()
 
@@ -30,16 +48,33 @@ endfunction()
 set(SHADER_DIR ${CMAKE_SOURCE_DIR}/shaders)
 set(COMPILED_SHADER_DIR ${CMAKE_BINARY_DIR}/shaders)
 
-compile_shader(${SHADER_DIR}/color.vert ${COMPILED_SHADER_DIR}/color.vert.spv)
-compile_shader(${SHADER_DIR}/color.frag ${COMPILED_SHADER_DIR}/color.frag.spv)
+compile_shader(
+    ${SHADER_DIR}/color.vert
+    ${COMPILED_SHADER_DIR}/color.vert.spv
+    ${COMPILED_SHADER_DIR}/color.vert.metal
+)
+
+compile_shader(
+    ${SHADER_DIR}/color.frag
+    ${COMPILED_SHADER_DIR}/color.frag.spv
+    ${COMPILED_SHADER_DIR}/color.frag.metal
+)
 
 # Custom target to build all shaders
 if(GLSLANG_VALIDATOR)
-    add_custom_target(shaders ALL
-        DEPENDS
-            ${COMPILED_SHADER_DIR}/color.vert.spv
-            ${COMPILED_SHADER_DIR}/color.frag.spv
+    set(SHADER_OUTPUTS
+        ${COMPILED_SHADER_DIR}/color.vert.spv
+        ${COMPILED_SHADER_DIR}/color.frag.spv
     )
+
+    if(SPIRV_CROSS)
+        list(APPEND SHADER_OUTPUTS
+            ${COMPILED_SHADER_DIR}/color.vert.metal
+            ${COMPILED_SHADER_DIR}/color.frag.metal
+        )
+    endif()
+
+    add_custom_target(shaders ALL DEPENDS ${SHADER_OUTPUTS})
 endif()
 
 add_executable(${PROJECT_NAME} src/main.cpp)

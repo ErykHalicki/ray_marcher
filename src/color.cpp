@@ -34,6 +34,30 @@ private:
         return buffer;
     }
 
+    SDL_GPUShaderFormat getShaderFormat() {
+#ifdef __APPLE__
+        return SDL_GPU_SHADERFORMAT_MSL;
+#else
+        return SDL_GPU_SHADERFORMAT_SPIRV;
+#endif
+    }
+
+    const char* getShaderExtension() {
+#ifdef __APPLE__
+        return ".metal";
+#else
+        return ".spv";
+#endif
+    }
+
+    const char* getShaderEntrypoint() {
+#ifdef __APPLE__
+        return "main0";  // spirv-cross renames main to main0 for MSL
+#else
+        return "main";
+#endif
+    }
+
 public:
     bool initialize() {
         if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -53,7 +77,7 @@ public:
         }
 
         gpu_device = SDL_CreateGPUDevice(
-            SDL_GPU_SHADERFORMAT_SPIRV,
+            getShaderFormat(),
             true,
             nullptr
         );
@@ -77,9 +101,12 @@ public:
     }
 
     bool createPipeline() {
-        // Load compiled SPIR-V shaders
-        auto vert_code = loadShader("shaders/color.vert.spv");
-        auto frag_code = loadShader("shaders/color.frag.spv");
+        // Load compiled shaders (SPIR-V or MSL depending on platform)
+        std::string vert_path = std::string("shaders/color.vert") + getShaderExtension();
+        std::string frag_path = std::string("shaders/color.frag") + getShaderExtension();
+
+        auto vert_code = loadShader(vert_path.c_str());
+        auto frag_code = loadShader(frag_path.c_str());
 
         if (vert_code.empty() || frag_code.empty()) {
             std::cerr << "Failed to load shader files\n";
@@ -91,8 +118,8 @@ public:
         SDL_GPUShaderCreateInfo vert_info = {};
         vert_info.code = vert_code.data();
         vert_info.code_size = vert_code.size();
-        vert_info.entrypoint = "main";
-        vert_info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        vert_info.entrypoint = getShaderEntrypoint();
+        vert_info.format = getShaderFormat();
         vert_info.stage = SDL_GPU_SHADERSTAGE_VERTEX;
         vert_info.num_samplers = 0;
         vert_info.num_storage_textures = 0;
@@ -109,8 +136,8 @@ public:
         SDL_GPUShaderCreateInfo frag_info = {};
         frag_info.code = frag_code.data();
         frag_info.code_size = frag_code.size();
-        frag_info.entrypoint = "main";
-        frag_info.format = SDL_GPU_SHADERFORMAT_SPIRV;
+        frag_info.entrypoint = getShaderEntrypoint();
+        frag_info.format = getShaderFormat();
         frag_info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         frag_info.num_samplers = 0;
         frag_info.num_storage_textures = 0;
