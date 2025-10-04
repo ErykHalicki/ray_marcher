@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctime>
 
 class ColoredUVDemo {
 private:
@@ -10,6 +11,7 @@ private:
     SDL_GPUDevice* gpu_device = nullptr;
     SDL_GPUGraphicsPipeline* pipeline = nullptr;
     SDL_GPUBuffer* vertex_buffer = nullptr;
+    SDL_GPUBuffer* uniform_buffer = nullptr;
 
     bool running = true;
 
@@ -33,6 +35,8 @@ private:
 
         return buffer;
     }
+
+	int now = time(0);
 
     SDL_GPUShaderFormat getShaderFormat() {
 #ifdef __APPLE__
@@ -102,8 +106,8 @@ public:
 
     bool createPipeline() {
         // Load compiled shaders (SPIR-V or MSL depending on platform)
-        std::string vert_path = std::string("shaders/color.vert") + getShaderExtension();
-        std::string frag_path = std::string("shaders/color.frag") + getShaderExtension();
+        std::string vert_path = std::string("src/shaders/color.vert") + getShaderExtension();
+        std::string frag_path = std::string("src/shaders/color.frag") + getShaderExtension();
 
         auto vert_code = loadShader(vert_path.c_str());
         auto frag_code = loadShader(frag_path.c_str());
