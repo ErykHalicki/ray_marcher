@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 project(SDL3Project)
 
 set(CMAKE_CXX_STANDARD 11)
+
 find_package(SDL3 REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
 
 # Find glslangValidator for shader compilation
 find_program(GLSLANG_VALIDATOR glslangValidator)
@@ -25,9 +28,9 @@ function(compile_shader SHADER_SOURCE SPIRV_OUTPUT MSL_OUTPUT)
     if(GLSLANG_VALIDATOR)
         # Compile GLSL to SPIR-V
         add_custom_command(
-            OUTPUT ${SPIRV_OUTPUT}
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/shaders
-            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
+            OUTPUT ${OUTPUT_FILE}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/shaders
+            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${OUTPUT_FILE}
             DEPENDS ${SHADER_SOURCE}
             COMMENT "Compiling GLSL to SPIR-V: ${SHADER_SOURCE}"
         )
@@ -45,8 +48,8 @@ function(compile_shader SHADER_SOURCE SPIRV_OUTPUT MSL_OUTPUT)
 endfunction()
 
 # Compile shaders
-set(SHADER_DIR ${CMAKE_SOURCE_DIR}/shaders)
-set(COMPILED_SHADER_DIR ${CMAKE_BINARY_DIR}/shaders)
+set(SHADER_DIR ${CMAKE_SOURCE_DIR}/src/shaders)
+set(COMPILED_SHADER_DIR ${CMAKE_BINARY_DIR}/src/shaders)
 
 compile_shader(
     ${SHADER_DIR}/color.vert
