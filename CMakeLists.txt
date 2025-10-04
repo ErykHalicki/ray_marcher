@@ -28,9 +28,9 @@ function(compile_shader SHADER_SOURCE SPIRV_OUTPUT MSL_OUTPUT)
     if(GLSLANG_VALIDATOR)
         # Compile GLSL to SPIR-V
         add_custom_command(
-            OUTPUT ${OUTPUT_FILE}
+            OUTPUT ${SPIRV_OUTPUT}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/shaders
-            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${OUTPUT_FILE}
+            COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
             DEPENDS ${SHADER_SOURCE}
             COMMENT "Compiling GLSL to SPIR-V: ${SHADER_SOURCE}"
         )
