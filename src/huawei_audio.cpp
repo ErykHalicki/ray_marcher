@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include <array>
+#include <yaml-cpp/yaml.h>
 #include "AudioAnalyzer.h"
 
 class HuaweiAudioDemo {
@@ -15,6 +16,7 @@ private:
     SDL_GPUBuffer* vertex_buffer = nullptr;
     SDL_GPUBuffer* camera_buffer = nullptr;
     SDL_GPUBuffer* audio_buffer = nullptr;
+    SDL_GPUBuffer* color_buffer = nullptr;
     bool running = true;
 
     Uint64 last_time = 0;
@@ -71,6 +73,14 @@ private:
         float padding;  // Alignment
     };
 
+    struct ColorParams {
+        float max_color_distance;
+        float saturation;
+        float brightness;
+        float num_stops;
+        float stops[16];  // 8 vec2 pairs (position, hue)
+    };
+
     std::vector<uint8_t> loadShader(const char* filename) {
         std::ifstream file(filename, std::ios::binary | std::ios::ate);
         if (!file.is_open()) {
@@ -109,6 +119,49 @@ private:
 #else
         return "main";
 #endif
+    }
+
+    ColorParams loadColorConfig(const char* filename) {
+        ColorParams params = {};
+        params.max_color_distance = 15.0f;
+        params.saturation = 1.0f;
+        params.brightness = 0.95f;
+        params.num_stops = 3.0f;
+        // Default gradient: red -> green -> blue
+        params.stops[0] = 0.0f; params.stops[1] = 0.0f;
+        params.stops[2] = 0.5f; params.stops[3] = 0.333f;
+        params.stops[4] = 1.0f; params.stops[5] = 0.667f;
+
+        try {
+            YAML::Node config = YAML::LoadFile(filename);
+
+            if (config["max_color_distance"]) {
+                params.max_color_distance = config["max_color_distance"].as<float>();
+            }
+            if (config["saturation"]) {
+                params.saturation = config["saturation"].as<float>();
+            }
+            if (config["brightness"]) {
+                params.brightness = config["brightness"].as<float>();
+            }
+
+            if (config["gradient_stops"]) {
+                auto stops = config["gradient_stops"];
+                params.num_stops = std::min((int)stops.size(), 8);
+
+                for (size_t i = 0; i < params.num_stops && i < 8; i++) {
+                    params.stops[i * 2] = stops[i]["position"].as<float>();
+                    params.stops[i * 2 + 1] = stops[i]["hue"].as<float>();
+                }
+            }
+
+            std::cout << "Loaded color config: " << params.num_stops << " gradient stops\n";
+        } catch (const YAML::Exception& e) {
+            std::cerr << "Warning: Could not load " << filename << ": " << e.what() << "\n";
+            std::cerr << "Using default color configuration\n";
+        }
+
+        return params;
     }
 
 public:
@@ -159,6 +212,7 @@ public:
         createVertexBuffer();
         createCameraBuffer();
         createAudioBuffer();
+        createColorBuffer();
         return true;
     }
 
@@ -199,7 +253,7 @@ public:
         frag_info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         frag_info.num_samplers = 0;
         frag_info.num_storage_textures = 0;
-        frag_info.num_storage_buffers = 2;  // Changed from 1 to 2 (camera + audio)
+        frag_info.num_storage_buffers = 3;  // camera + audio + color
         frag_info.num_uniform_buffers = 0;
 
         SDL_GPUShader* frag_shader = SDL_CreateGPUShader(gpu_device, &frag_info);
@@ -319,6 +373,45 @@ public:
         buffer_info.size = sizeof(AudioParams);
 
         audio_buffer = SDL_CreateGPUBuffer(gpu_device, &buffer_info);
+    }
+
+    void createColorBuffer() {
+        ColorParams params = loadColorConfig("../color_config.yaml");
+
+        SDL_GPUBufferCreateInfo buffer_info = {};
+        buffer_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
+        buffer_info.size = sizeof(ColorParams);
+
+        color_buffer = SDL_CreateGPUBuffer(gpu_device, &buffer_info);
+
+        // Upload initial color config
+        if (color_buffer) {
+            SDL_GPUTransferBufferCreateInfo transfer_info = {};
+            transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+            transfer_info.size = sizeof(ColorParams);
+
+            SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_info);
+            void* data = SDL_MapGPUTransferBuffer(gpu_device, transfer, false);
+            SDL_memcpy(data, &params, sizeof(ColorParams));
+            SDL_UnmapGPUTransferBuffer(gpu_device, transfer);
+
+            SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(gpu_device);
+            SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+            SDL_GPUTransferBufferLocation src = {};
+            src.transfer_buffer = transfer;
+            src.offset = 0;
+
+            SDL_GPUBufferRegion dst = {};
+            dst.buffer = color_buffer;
+            dst.offset = 0;
+            dst.size = sizeof(ColorParams);
+
+            SDL_UploadToGPUBuffer(copy_pass, &src, &dst, false);
+            SDL_EndGPUCopyPass(copy_pass);
+            SDL_SubmitGPUCommandBuffer(cmd);
+            SDL_ReleaseGPUTransferBuffer(gpu_device, transfer);
+        }
     }
 
     void updateCameraBuffer() {
@@ -491,7 +584,7 @@ public:
 
             SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, nullptr);
 
-            if (pipeline && vertex_buffer && camera_buffer && audio_buffer) {
+            if (pipeline && vertex_buffer && camera_buffer && audio_buffer && color_buffer) {
                 SDL_BindGPUGraphicsPipeline(pass, pipeline);
 
                 SDL_GPUBufferBinding vbinding = {};
@@ -502,12 +595,12 @@ public:
 
 #ifdef __APPLE__
                 // spirv-cross reorders buffers when converting to Metal
-                SDL_GPUBuffer* storage_buffers[] = {audio_buffer, camera_buffer};
+                SDL_GPUBuffer* storage_buffers[] = {color_buffer, audio_buffer, camera_buffer};
 #else
                 // SPIR-V on Linux preserves the original binding order
-                SDL_GPUBuffer* storage_buffers[] = {camera_buffer, audio_buffer};
+                SDL_GPUBuffer* storage_buffers[] = {camera_buffer, audio_buffer, color_buffer};
 #endif
-                SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 2);
+                SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 3);
 
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
             }
@@ -635,6 +728,9 @@ public:
         }
         if (audio_buffer) {
             SDL_ReleaseGPUBuffer(gpu_device, audio_buffer);
+        }
+        if (color_buffer) {
+            SDL_ReleaseGPUBuffer(gpu_device, color_buffer);
         }
         if (pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(gpu_device, pipeline);
