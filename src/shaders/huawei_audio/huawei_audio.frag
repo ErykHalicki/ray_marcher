@@ -41,7 +41,7 @@ layout(set = 2, binding = 2) readonly buffer ColorParams {
 
 // Exposed variables
 const int u_max_steps = 200;
-const float u_max_distance = 50.0;
+const float u_max_distance = 100.0;
 const float u_fog = 0.5;
 const float u_specular = 0.3;
 const float u_light_e_w = 0.5;
@@ -131,18 +131,18 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     float audioMultiplier = 0.0;
 
     // Close mountains - treble (high frequencies)
-    float closeWeight = smoothstep(10.0, 0.0, distanceFromCamera);
+    float closeWeight = smoothstep(u_max_distance / 3, 0.0, distanceFromCamera);
     audioMultiplier += closeWeight * audio.high * 2.5;
 
     // Mid-range mountains - mid frequencies
-    float midWeight = smoothstep(0.0, 10.0, distanceFromCamera) * smoothstep(25.0, 10.0, distanceFromCamera);
+    float midWeight = smoothstep(0.0, u_max_distance / 3, distanceFromCamera) * smoothstep(u_max_distance*2 / 3, u_max_distance / 3, distanceFromCamera);
     audioMultiplier += midWeight * audio.mid * 1.5;
 
     // Far mountains - bass
-    float farWeight = smoothstep(10.0, 24.0, distanceFromCamera);
+    float farWeight = smoothstep(u_max_distance / 3, u_max_distance*2 / 3, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
 
-	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 10.);
+	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 8.);
 
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);

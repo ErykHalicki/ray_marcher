@@ -155,35 +155,43 @@ AudioAnalyzer::FrequencyBands AudioAnalyzer::getFrequencyBands() {
     if (mid_count > 0) bands.mid = mid_sum / mid_count;
     if (high_count > 0) bands.high = high_sum / high_count;
 
-    // Track maximum in a sliding window (~5 seconds)
+    // Track maximum and minimum in a sliding window (~5 seconds)
     float current_max = std::max({bands.bass, bands.mid, bands.high});
+    float current_min = std::min({bands.bass, bands.mid, bands.high});
     max_history.push_back(current_max);
+    min_history.push_back(current_min);
 
     // Keep only the last ~5 seconds of history
     if (max_history.size() > max_history_size) {
         max_history.erase(max_history.begin());
     }
+    if (min_history.size() > max_history_size) {
+        min_history.erase(min_history.begin());
+    }
 
     // Calculate rolling average of the sliding window
     float max_average = 0.0f;
+    float min_average = 0.0f;
     for (float val : max_history) {
         max_average += val;
+    }
+    for (float val : min_history) {
+        min_average += val;
     }
     if (max_history.size() > 0) {
         max_average /= max_history.size();
     }
-
-    // Set a minimum threshold to prevent over-amplification of quiet audio
-    const float min_threshold = 100.0f;  // Adjust based on your audio input levels
-    if (max_average < min_threshold) {
-        //max_average = min_threshold;
+    if (min_history.size() > 0) {
+        min_average /= min_history.size();
     }
 
-    // Normalize by the rolling average
-    if (max_average > 0.0f) {
-        bands.bass /= max_average;
-        bands.mid /= max_average;
-        bands.high /= max_average;
+    // Calculate range and normalize by it
+    float range = max_average - min_average;
+
+    if (range > 0.0f) {
+        bands.bass = (bands.bass ) / range*2.5;
+        bands.mid = (bands.mid ) / range*5.0;
+        bands.high = (bands.high ) / range*5.0;
     }
 
     return bands;

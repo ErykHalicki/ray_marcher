@@ -29,8 +29,9 @@ private:
 
     bool initialized = false;
 
-    // Sliding window for maximum value tracking
+    // Sliding window for maximum and minimum value tracking
     std::vector<float> max_history;
+    std::vector<float> min_history;
     int max_history_size = 300;  // ~5 seconds at 30 fps
 
 public:
