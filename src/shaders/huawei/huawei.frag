@@ -12,13 +12,6 @@ layout(set = 2, binding = 0) readonly buffer CameraParams {
     float pitch;
 } camera;
 
-// Audio parameters from CPU
-layout(set = 2, binding = 1) readonly buffer AudioParams {
-    float bass;
-    float mid;
-    float high;
-} audio;
-
 // Constants
 #define PI 3.14159
 #define PI2 6.28318
@@ -92,37 +85,9 @@ float fbm(in vec2 uv)
     return value;
 }
 
-float terrainHeightMap(in vec3 uv, in vec3 camPos)
+float terrainHeightMap(in vec3 uv)
 {
     float height = fbm(uv.xz*0.5);
-
-    // Calculate distance from camera (horizontal distance only for consistent height zones)
-    vec2 camPosXZ = vec2(camPos.x, camPos.z);
-    vec2 terrainPosXZ = vec2(uv.x, uv.z);
-    float distanceFromCamera = length(terrainPosXZ - camPosXZ);
-
-    // Define distance ranges for each frequency band
-    // Close range (0-7): High frequencies (treble) - nearby mountains
-    // Mid range (7-14): Mid frequencies - middle distance mountains
-    // Far range (14+): Bass frequencies - distant mountains
-
-    float audioMultiplier = 0.0;
-
-    // Close mountains - treble (high frequencies)
-    float closeWeight = smoothstep(7.0, 0.0, distanceFromCamera);
-    audioMultiplier += closeWeight * audio.high * 1.5;
-
-    // Mid-range mountains - mid frequencies
-    float midWeight = smoothstep(0.0, 7.0, distanceFromCamera) * smoothstep(20.0, 7.0, distanceFromCamera);
-    audioMultiplier += midWeight * audio.mid * 1.5;
-
-    // Far mountains - bass
-    float farWeight = smoothstep(7.0, 14.0, distanceFromCamera);
-    audioMultiplier += farWeight * audio.bass * 1.5;
-
-    // Apply audio modulation to height
-    height *= (1.0 + audioMultiplier);
-
     return height;
 }
 
@@ -136,12 +101,12 @@ vec3 stepCountCostColor(float bias)
     return offset + amplitude*cos(PI2*(frequency*bias+phase));
 }
 
-vec3 getNormal(vec3 rayTerrainIntersection, float t, vec3 camPos)
+vec3 getNormal(vec3 rayTerrainIntersection, float t)
 {
     vec3 eps = vec3(.001 * t, .0, .0);
-    vec3 n = vec3(terrainHeightMap(rayTerrainIntersection - eps.xyy, camPos) - terrainHeightMap(rayTerrainIntersection + eps.xyy, camPos),
+    vec3 n = vec3(terrainHeightMap(rayTerrainIntersection - eps.xyy) - terrainHeightMap(rayTerrainIntersection + eps.xyy),
                 2. * eps.x,
-                terrainHeightMap(rayTerrainIntersection - eps.yyx, camPos) - terrainHeightMap(rayTerrainIntersection + eps.yyx, camPos));
+                terrainHeightMap(rayTerrainIntersection - eps.yyx) - terrainHeightMap(rayTerrainIntersection + eps.yyx));
 
     return normalize(n);
 }
@@ -278,7 +243,7 @@ void main()
     if (intersectionDistance < u_max_distance && rayCollision.y > 0.)
     {
         vec3 rayTerrainIntersection = rayOrigin + rayDirection * intersectionDistance;
-        vec3 terrainNormal = getNormal(rayTerrainIntersection, intersectionDistance, rayOrigin);
+        vec3 terrainNormal = getNormal(rayTerrainIntersection, intersectionDistance);
         vec3 viewDirection = normalize(rayOrigin - rayTerrainIntersection);
 
         vec3 terrainShading = computeShading(albedo, lightColor, terrainNormal, lightDirection, viewDirection, skyColor, terrainHeight);
