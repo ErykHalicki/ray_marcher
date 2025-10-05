@@ -450,7 +450,13 @@ public:
 
                 SDL_BindGPUVertexBuffers(pass, 0, &vbinding, 1);
 
+#ifdef __APPLE__
+                // spirv-cross reorders buffers when converting to Metal
                 SDL_GPUBuffer* storage_buffers[] = {audio_buffer, camera_buffer};
+#else
+                // SPIR-V on Linux preserves the original binding order
+                SDL_GPUBuffer* storage_buffers[] = {camera_buffer, audio_buffer};
+#endif
                 SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 2);
 
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
