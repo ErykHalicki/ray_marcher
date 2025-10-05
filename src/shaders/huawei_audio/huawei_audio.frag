@@ -281,8 +281,7 @@ void main()
 
     vec3 finalColor = vec3(0.0);
 
-    vec3 skyColor = mix(vec3(0.3098, 0.5608, 0.9137), vec3(0.9961, 0.9725, 0.9059), max(dot(rayDirection, lightDirection) * 0.5 + 0.5, 0.0));
-    skyColor = toLinear(skyColor);
+    vec3 skyColor = vec3(0.0);
 
     finalColor = skyColor;
 
@@ -299,11 +298,8 @@ void main()
         // Using max distance of 15 for faster color transition
         float hue = smoothstep(0.0, 15.0, distanceFromCamera) * 0.667;
 
-        // Invert hue for mountain peaks
-        hue = mix(hue, 0.667 - hue, terrainHeight);
-
-        // Create HSV color: varying hue, high saturation, bright value
-        vec3 hsvColor = vec3(hue, 0.85, 0.95);
+        // Create HSV color: varying hue, very high saturation, bright value
+        vec3 hsvColor = vec3(hue, 1.0, 0.95);
         vec3 albedo = toLinear(hsv2rgb(hsvColor));
 
         vec3 terrainShading = computeShading(albedo, lightColor, terrainNormal, lightDirection, viewDirection, skyColor, terrainHeight);
