@@ -29,6 +29,10 @@ private:
 
     bool initialized = false;
 
+    // Sliding window for maximum value tracking
+    std::vector<float> max_history;
+    int max_history_size = 150;  // ~5 seconds at 30 fps
+
 public:
     AudioAnalyzer();
     ~AudioAnalyzer();
