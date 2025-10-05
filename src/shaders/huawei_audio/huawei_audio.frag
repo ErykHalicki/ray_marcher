@@ -28,8 +28,8 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
 
 // Exposed variables
 const int u_max_steps = 100;
-const float u_max_distance = 20.0;
-const float u_fog = 1.0;
+const float u_max_distance = 30.0;
+const float u_fog = 0.7;
 const float u_specular = 0.5;
 const float u_light_e_w = 1.0;
 
@@ -88,12 +88,13 @@ float fbm(in vec2 uv, vec3 camPos)
 
     for (int i = 0; i < 8; i++)
     {
-        value += perlinNoise(uv * freq) * amplitude;
+        float multiplier = 1.0;
+        //if(i < 3) {multiplier =  1.0 + audio.bass*0.2;}
+        //if(i > 6) {multiplier =  0.75 + audio.high*0.5;}
+        value += perlinNoise(uv * freq ) * amplitude * multiplier;
         amplitude *= 0.4;
         freq *= 2.0;
     }
-    // max = 1.6 + (1.6 * 0.4) + (1.6 * 0.4^2) + (1.6 * 0.4^3) ...
-    // max = 2.66491904
 
     return value;
 }
@@ -115,15 +116,15 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     float audioMultiplier = 0.0;
 
     // Close mountains - treble (high frequencies)
-    float closeWeight = smoothstep(7.0, 0.0, distanceFromCamera);
+    float closeWeight = smoothstep(10.0, 0.0, distanceFromCamera);
     audioMultiplier += closeWeight * audio.high * 1.5;
 
     // Mid-range mountains - mid frequencies
-    float midWeight = smoothstep(0.0, 7.0, distanceFromCamera) * smoothstep(20.0, 7.0, distanceFromCamera);
+    float midWeight = smoothstep(0.0, 10.0, distanceFromCamera) * smoothstep(25.0, 10.0, distanceFromCamera);
     audioMultiplier += midWeight * audio.mid * 1.5;
 
     // Far mountains - bass
-    float farWeight = smoothstep(7.0, 14.0, distanceFromCamera);
+    float farWeight = smoothstep(10.0, 24.0, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
 
 	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 10);
@@ -131,7 +132,7 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);
 
-    return height;
+    return height ;
 }
 
 vec3 stepCountCostColor(float bias)
@@ -212,7 +213,7 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
 {
     float intersectionDistance = minDistance;
     float finalStepCount = 1.0;
-    float MAX_HEIGHT = 4.0;
+    float MAX_HEIGHT = 10.0;
 
     for(int i = 0; i < u_max_steps; i++)
     {
@@ -298,8 +299,7 @@ void main()
         float distanceFromCamera = length(rayTerrainIntersection - camPosition);
 
         // Map distance to hue: red (0.0) for close, blue (0.667) for far
-        // Using max distance of 15 for faster color transition
-        float hue = smoothstep(0.0, 15.0, distanceFromCamera) * 0.667;
+        float hue = smoothstep(0.0, 18.0, distanceFromCamera) * 0.667;
 
         // Create HSV color: varying hue, very high saturation, bright value
         vec3 hsvColor = vec3(hue, 1.0, 0.95);
