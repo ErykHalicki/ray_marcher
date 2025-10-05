@@ -214,7 +214,7 @@ void main()
 
     // Use camera from uniform buffer
     vec3 camPosition = vec3(camera.pos_x, camera.pos_y, camera.pos_z);
-    mat3 viewMatrix = computeViewMatrix(camera.yaw, camera.pitch);
+    mat3 viewMatrix = computeViewMatrix(camera.yaw, 0.0);
 
     vec3 rayOrigin = camPosition;
     vec3 rayDirection = normalize(viewMatrix * vec3(uv.xy, 1.0));
