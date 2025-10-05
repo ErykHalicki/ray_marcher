@@ -19,6 +19,7 @@ private:
 
     Uint64 last_time = 0;
     int frame_count = 0;
+    float elapsed_time = 0.0f;
 
     // Camera state
     float cam_x = 0.0f;
@@ -39,6 +40,14 @@ private:
     bool key_space = false;
     bool key_shift = false;
 
+    // Auto movement
+    float auto_direction_x = 1.0f;
+    float auto_direction_y = 1.0f;
+    float auto_direction_z = 1.0f;
+    float auto_yaw_direction = 1.0f;
+    float auto_movement_timer = 0.0f;
+    float auto_direction_change_interval = 2.0f;
+
     // Audio analyzer
     AudioAnalyzer audio_analyzer;
 
@@ -51,7 +60,8 @@ private:
         float pos_x, pos_y, pos_z;
         float yaw;
         float pitch;
-        float padding[3];  // Alignment
+        float time;
+        float padding[2];  // Alignment
     };
 
     struct AudioParams {
@@ -314,7 +324,7 @@ public:
     void updateCameraBuffer() {
         if (!camera_buffer) return;
 
-        CameraParams params = {cam_x, cam_y, cam_z, cam_yaw, cam_pitch, {0, 0, 0}};
+        CameraParams params = {cam_x, cam_y, cam_z, cam_yaw, cam_pitch, elapsed_time, {0, 0}};
 
         SDL_GPUTransferBufferCreateInfo transfer_info = {};
         transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
@@ -382,11 +392,43 @@ public:
     void updateCamera(float delta_time) {
         float move_speed = 0.5f * delta_time;
 
+        float Y_MIN = 3.5;
+        float Y_MAX = 10.0;
+
         // Calculate forward and right vectors from yaw
         float forward_x = sin(cam_yaw);
         float forward_z = cos(cam_yaw);
         float right_x = cos(cam_yaw);
         float right_z = -sin(cam_yaw);
+
+        // AUTO MOVEMENT
+        cam_x += forward_x * auto_direction_x * move_speed * 0.5f;
+        cam_y += auto_direction_y * move_speed * 0.5f;
+        cam_z += forward_z * auto_direction_z * move_speed * 0.5f;
+        cam_yaw += 0.2f * auto_yaw_direction * delta_time;  // Slowly spin yaw
+
+        // Update auto movement timer and randomly change direction
+        auto_movement_timer += delta_time;
+        if (auto_movement_timer >= auto_direction_change_interval) {
+            auto_movement_timer = 0.0f;
+
+            // Set next random interval (0.5 - 4 seconds)
+            auto_direction_change_interval = 0.5f + static_cast<float>(rand()) / RAND_MAX * 3.5f;
+
+            // Randomly flip any subset of directions (or set to random if 0)
+            if (rand() % 2) {
+                auto_direction_x = (auto_direction_x == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_x * -1.0f;
+            }
+            if (rand() % 2) {
+                auto_direction_y = (auto_direction_y == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_y * -1.0f;
+            }
+            if (rand() % 2) {
+                auto_direction_z = (auto_direction_z == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_z * -1.0f;
+            }
+            if (rand() % 2) {
+                auto_yaw_direction = (auto_yaw_direction == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_yaw_direction * -1.0f;
+            }
+        }
 
         // WASD movement
         if (key_w) {
@@ -412,6 +454,14 @@ public:
         }
         if (key_shift) {
             cam_y -= move_speed;
+        }
+
+        // Clamp Y to min and max
+        if (cam_y < Y_MIN) {
+            cam_y = Y_MIN;
+        }
+        if (cam_y > Y_MAX) {
+            cam_y = Y_MAX;
         }
 
         // Clamp pitch
@@ -549,6 +599,7 @@ public:
             last_frame_time = current_frame_time;
 
             updateCamera(delta_time);
+            elapsed_time += delta_time;
 
             Uint64 frame_start = SDL_GetPerformanceCounter();
             render();

@@ -10,6 +10,7 @@ layout(set = 2, binding = 0) readonly buffer CameraParams {
     float pos_z;
     float yaw;
     float pitch;
+    // float time;
 } camera;
 
 // Audio parameters from CPU
@@ -27,11 +28,11 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
 #define EPSILON 1e-10
 
 // Exposed variables
-const int u_max_steps = 100;
-const float u_max_distance = 30.0;
-const float u_fog = 0.7;
-const float u_specular = 0.5;
-const float u_light_e_w = 1.0;
+const int u_max_steps = 200;
+const float u_max_distance = 50.0;
+const float u_fog = 0.5;
+const float u_specular = 0.3;
+const float u_light_e_w = 0.5;
 
 // Cubic fade (C1 smooth) - more performant
 vec2 cubicInterpolation(vec2 t)
@@ -42,9 +43,11 @@ vec2 cubicInterpolation(vec2 t)
 // Random hash
 vec2 hash2(vec2 p)
 {
+    // Add slowly changing time offset to create gradual changes
+    // float timeOffset = camera.time * 0.05;
     p = vec2(dot(p, vec2(127.1, 311.7)),
              dot(p, vec2(269.5, 183.3)));
-    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+    return -1.0 + 2.0 * fract(sin(p ) * 43758.5453123);
 }
 
 float hash1(inout float seed)
@@ -90,7 +93,7 @@ float fbm(in vec2 uv, vec3 camPos)
     {
         float multiplier = 1.0;
         //if(i < 3) {multiplier =  1.0 + audio.bass*0.2;}
-        //if(i > 6) {multiplier =  0.75 + audio.high*0.5;}
+        //if(i > 6) {multiplier =  0.75 + audio.high*0.4;}
         value += perlinNoise(uv * freq ) * amplitude * multiplier;
         amplitude *= 0.4;
         freq *= 2.0;
@@ -117,7 +120,7 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
 
     // Close mountains - treble (high frequencies)
     float closeWeight = smoothstep(10.0, 0.0, distanceFromCamera);
-    audioMultiplier += closeWeight * audio.high * 1.5;
+    audioMultiplier += closeWeight * audio.high * 2.5;
 
     // Mid-range mountains - mid frequencies
     float midWeight = smoothstep(0.0, 10.0, distanceFromCamera) * smoothstep(25.0, 10.0, distanceFromCamera);
@@ -127,7 +130,7 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     float farWeight = smoothstep(10.0, 24.0, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
 
-	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 10);
+	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 10.);
 
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);
@@ -231,7 +234,7 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
             intersectionDistance = -1.0;
             break;
         }
-        intersectionDistance += (0.6 + hash1(seed)) * height;
+        intersectionDistance += (0.35 + hash1(seed)) * height;
     }
 
     return vec2(intersectionDistance, finalStepCount);
@@ -250,6 +253,32 @@ vec3 computeShading(vec3 terrainColor, vec3 lightColor, vec3 normal, vec3 lightD
     vec3 specular = lightColor * pow(NdH, 10.0) * specularIntensity * NdL;
 
     return (diffuse + ambient + specular);
+}
+
+// Generate stars based on ray direction
+float generateStars(vec3 rayDir)
+{
+    // Create grid cell coordinates
+    vec3 starCoord = rayDir * 200.0;
+    vec3 cellId = floor(starCoord);
+
+    // Hash function for star position within cell
+    vec3 hash = fract(sin(cellId * vec3(127.1, 311.7, 74.7)) * 43758.5453);
+
+    // Only show star if random value is above threshold (controls density)
+    if (hash.x > 0.98) {
+        vec3 localPos = fract(starCoord);
+        vec3 starPos = hash * 0.6 + 0.2; // Star position within cell
+
+        float dist = length(localPos - starPos);
+        float brightness = hash.y; // Random brightness
+
+        // Create small, bright points
+        float star = smoothstep(0.015, 0.005, dist) * brightness;
+        return star;
+    }
+
+    return 0.0;
 }
 
 void main()
@@ -287,7 +316,9 @@ void main()
 
     vec3 skyColor = vec3(0.0);
 
-    finalColor = skyColor;
+    // Add stars to sky
+    float stars = generateStars(rayDirection);
+    finalColor = skyColor + vec3(stars);
 
     if (intersectionDistance < u_max_distance && rayCollision.y > 0.)
     {
@@ -298,8 +329,7 @@ void main()
         // Calculate distance from camera for HSV color
         float distanceFromCamera = length(rayTerrainIntersection - camPosition);
 
-        // Map distance to hue: red (0.0) for close, blue (0.667) for far
-        float hue = smoothstep(0.0, 18.0, distanceFromCamera) * 0.667;
+        float hue = smoothstep(0.0, 40.0, distanceFromCamera) * 0.78 ;
 
         // Create HSV color: varying hue, very high saturation, bright value
         vec3 hsvColor = vec3(hue, 1.0, 0.95);
