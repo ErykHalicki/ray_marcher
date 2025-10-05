@@ -10,6 +10,6 @@ gradient_stops:
   - position: 0.0
     hue: 0.0        # red
   - position: 0.5
-    hue: 0.333      # green
+    hue: 0.333      # yellow
   - position: 1.0
     hue: 0.667      # blue

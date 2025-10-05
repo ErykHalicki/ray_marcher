@@ -366,7 +366,7 @@ public:
     }
 
     void createColorBuffer() {
-        ColorParams params = loadColorConfig("color_config.yaml");
+        ColorParams params = loadColorConfig("../color_config.yaml");
 
         SDL_GPUBufferCreateInfo buffer_info = {};
         buffer_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
