@@ -12,6 +12,9 @@ private:
     SDL_GPUBuffer* vertex_buffer = nullptr;
     bool running = true;
 
+    Uint64 last_time = 0;
+    int frame_count = 0;
+
     struct Vertex {
         float x, y;
         float u, v;
@@ -292,14 +295,33 @@ public:
         std::cout << "Huawei Ray Marcher\n";
         std::cout << "Press ESC or Q to quit\n";
 
+        last_time = SDL_GetTicks();
+
         while (running) {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 handleEvent(event);
             }
 
+            Uint64 frame_start = SDL_GetPerformanceCounter();
             render();
-            SDL_Delay(16);
+            Uint64 frame_end = SDL_GetPerformanceCounter();
+
+            float frame_time_ms = (frame_end - frame_start) / (float)SDL_GetPerformanceFrequency() * 1000.0f;
+
+            frame_count++;
+            Uint64 current_time = SDL_GetTicks();
+            Uint64 elapsed = current_time - last_time;
+
+            // Print stats every second
+            if (elapsed >= 1000) {
+                float fps = frame_count / (elapsed / 1000.0f);
+                std::cout << "FPS: " << fps << " | Frame time: " << frame_time_ms << " ms\n";
+                frame_count = 0;
+                last_time = current_time;
+            }
+
+            SDL_Delay(33);
         }
     }
 

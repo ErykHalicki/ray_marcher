@@ -68,6 +68,8 @@ float fbm(in vec2 uv)
         amplitude *= 0.4;
         freq *= 2.0;
     }
+    // max = 1.6 + (1.6 * 0.4) + (1.6 * 0.4^2) + (1.6 * 0.4^3) ...
+    // max = 2.66491904
 
     return value;
 }
@@ -138,6 +140,11 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
             intPos = pos;
             break;
         }
+        if(pos.y > 2.66)
+        {
+            finalStepCount = -1.0;
+            intersectionDistance = -1.0;
+        }
         intersectionDistance += 0.2 * height;
     }
 
@@ -201,7 +208,7 @@ void main()
 
     finalColor = skyColor;
 
-    if (intersectionDistance < u_max_distance)
+    if (intersectionDistance < u_max_distance && rayCollision.y > 0.)
     {
         vec3 rayTerrainIntersection = rayOrigin + rayDirection * intersectionDistance;
         vec3 terrainNormal = getNormal(rayTerrainIntersection, intersectionDistance);
