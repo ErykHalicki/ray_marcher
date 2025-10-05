@@ -6,8 +6,28 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(FFTW REQUIRED fftw3)
+
+# Find FFTW3 - handle macOS Homebrew installation
+if(APPLE)
+    # Check for Homebrew installation paths
+    execute_process(
+        COMMAND brew --prefix fftw
+        OUTPUT_VARIABLE FFTW_PREFIX
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(FFTW_PREFIX)
+        set(FFTW_INCLUDE_DIRS "${FFTW_PREFIX}/include")
+        set(FFTW_LIBRARY_DIRS "${FFTW_PREFIX}/lib")
+        set(FFTW_LIBRARIES "-L${FFTW_LIBRARY_DIRS}" "-lfftw3")
+        message(STATUS "Found FFTW via Homebrew: ${FFTW_PREFIX}")
+    endif()
+else()
+    # Use pkg-config on Linux
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFTW REQUIRED fftw3)
+endif()
 
 # Find glslangValidator for shader compilation
 find_program(GLSLANG_VALIDATOR glslangValidator)
@@ -133,12 +153,22 @@ if(GLSLANG_VALIDATOR)
 endif()
 
 add_executable(audioTest src/audioTest.cpp)
-target_link_libraries(audioTest SDL3::SDL3 ${FFTW_LIBRARIES})
 target_include_directories(audioTest PRIVATE ${FFTW_INCLUDE_DIRS})
+if(APPLE AND FFTW_LIBRARY_DIRS)
+    target_link_directories(audioTest PRIVATE ${FFTW_LIBRARY_DIRS})
+    target_link_libraries(audioTest SDL3::SDL3 fftw3)
+else()
+    target_link_libraries(audioTest SDL3::SDL3 ${FFTW_LIBRARIES})
+endif()
 
 add_executable(huawei_audio src/huawei_audio.cpp src/AudioAnalyzer.cpp)
-target_link_libraries(huawei_audio SDL3::SDL3 ${FFTW_LIBRARIES})
 target_include_directories(huawei_audio PRIVATE ${FFTW_INCLUDE_DIRS})
+if(APPLE AND FFTW_LIBRARY_DIRS)
+    target_link_directories(huawei_audio PRIVATE ${FFTW_LIBRARY_DIRS})
+    target_link_libraries(huawei_audio SDL3::SDL3 fftw3)
+else()
+    target_link_libraries(huawei_audio SDL3::SDL3 ${FFTW_LIBRARIES})
+endif()
 if(GLSLANG_VALIDATOR)
     add_dependencies(huawei_audio shaders)
 endif()
