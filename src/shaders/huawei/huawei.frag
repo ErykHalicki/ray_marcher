@@ -39,6 +39,11 @@ vec2 hash2(vec2 p)
     return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
 }
 
+float hash1(inout float seed)
+{
+    return fract(sin(seed++)*43758.5453123);
+}
+
 // 2D Perlin (gradient) - Optimized
 float perlinNoise(vec2 P)
 {
@@ -157,7 +162,7 @@ vec3 tosRGB(vec3 inputColor)
     return inputColor;
 }
 
-vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, in float maxDistance, inout vec3 intPos)
+vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, in float maxDistance, inout vec3 intPos, inout float seed)
 {
     float intersectionDistance = minDistance;
     float finalStepCount = 1.0;
@@ -179,7 +184,7 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
             intersectionDistance = -1.0;
             break;
         }
-        intersectionDistance += 0.2 * height;
+        intersectionDistance += (0.2 + hash1(seed)) * height;
     }
 
     return vec2(intersectionDistance, finalStepCount);
@@ -222,8 +227,9 @@ void main()
     vec3 rayOrigin = camPosition;
     vec3 rayDirection = normalize(viewMatrix * vec3(uv.xy, 1.0));
 
+    float seed = fragUV.x + fragUV.y * iResolution.x;
     vec3 intPos;
-    vec2 rayCollision = rayMarching(rayOrigin, rayDirection, 0.1, u_max_distance, intPos);
+    vec2 rayCollision = rayMarching(rayOrigin, rayDirection, 0.1, u_max_distance, intPos, seed);
     float intersectionDistance = rayCollision.x;
 
     float normalizedStepCost = rayCollision.y / float(u_max_steps);
