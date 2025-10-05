@@ -79,7 +79,7 @@ float perlinNoise(vec2 P)
 }
 
 // Fractional Brownian Motion
-float fbm(in vec2 uv)
+float fbm(in vec2 uv, vec3 camPos)
 {
     float value = 0.;
     float amplitude = 1.6;
@@ -87,7 +87,7 @@ float fbm(in vec2 uv)
 
     for (int i = 0; i < 8; i++)
     {
-        value += perlinNoise(uv * freq) * amplitude;
+        value += perlinNoise(uv * freq, vec2(camPos.x, camPos.y)) * amplitude;
         amplitude *= 0.4;
         freq *= 2.0;
     }
@@ -99,7 +99,7 @@ float fbm(in vec2 uv)
 
 float terrainHeightMap(in vec3 uv, in vec3 camPos)
 {
-    float height = fbm(uv.xz*0.5);
+    float height = fbm(uv.xz*0.5, camPos);
 
     // Calculate distance from camera (horizontal distance only for consistent height zones)
     vec2 camPosXZ = vec2(camPos.x, camPos.z);
@@ -124,6 +124,8 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     // Far mountains - bass
     float farWeight = smoothstep(7.0, 14.0, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
+
+	audioMultiplier *= distance(vec2(camPos.x, camPos.y), terrainPosXZ) / 10;
 
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);

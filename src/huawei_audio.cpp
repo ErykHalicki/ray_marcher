@@ -463,35 +463,52 @@ public:
     }
 
     void handleEvent(const SDL_Event& event) {
-        if (event.type == SDL_EVENT_QUIT) {
-            running = false;
-        } else if (event.type == SDL_EVENT_KEY_DOWN) {
-            if (event.key.key == SDLK_ESCAPE || event.key.key == SDLK_Q) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
                 running = false;
-            }
-            if (event.key.key == SDLK_W) key_w = true;
-            if (event.key.key == SDLK_S) key_s = true;
-            if (event.key.key == SDLK_A) key_a = true;
-            if (event.key.key == SDLK_D) key_d = true;
-            if (event.key.key == SDLK_SPACE) key_space = true;
-            if (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT) key_shift = true;
-        } else if (event.type == SDL_EVENT_KEY_UP) {
-            if (event.key.key == SDLK_W) key_w = false;
-            if (event.key.key == SDLK_S) key_s = false;
-            if (event.key.key == SDLK_A) key_a = false;
-            if (event.key.key == SDLK_D) key_d = false;
-            if (event.key.key == SDLK_SPACE) key_space = false;
-            if (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT) key_shift = false;
-        } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-            if (!mouse_captured) {
-                SDL_SetWindowRelativeMouseMode(window, true);
-                mouse_captured = true;
-            }
-        } else if (event.type == SDL_EVENT_MOUSE_MOTION) {
-            if (mouse_captured) {
-                cam_yaw += event.motion.xrel * mouse_sensitivity;
-                cam_pitch -= event.motion.yrel * mouse_sensitivity;
-            }
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                switch (event.key.key) {
+                    case SDLK_ESCAPE:
+                    case SDLK_Q:
+                        running = false;
+                        break;
+                    case SDLK_W: key_w = true; break;
+                    case SDLK_S: key_s = true; break;
+                    case SDLK_A: key_a = true; break;
+                    case SDLK_D: key_d = true; break;
+                    case SDLK_SPACE: key_space = true; break;
+                    case SDLK_LSHIFT:
+                    case SDLK_RSHIFT:
+                        key_shift = true;
+                        break;
+                }
+                break;
+            case SDL_EVENT_KEY_UP:
+                switch (event.key.key) {
+                    case SDLK_W: key_w = false; break;
+                    case SDLK_S: key_s = false; break;
+                    case SDLK_A: key_a = false; break;
+                    case SDLK_D: key_d = false; break;
+                    case SDLK_SPACE: key_space = false; break;
+                    case SDLK_LSHIFT:
+                    case SDLK_RSHIFT:
+                        key_shift = false;
+                        break;
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                if (!mouse_captured) {
+                    SDL_SetWindowRelativeMouseMode(window, true);
+                    mouse_captured = true;
+                }
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                if (mouse_captured) {
+                    cam_yaw += event.motion.xrel * mouse_sensitivity;
+                    cam_pitch -= event.motion.yrel * mouse_sensitivity;
+                }
+                break;
         }
     }
 
