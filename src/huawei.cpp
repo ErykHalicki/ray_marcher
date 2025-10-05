@@ -393,6 +393,9 @@ public:
         }
 
         SDL_SubmitGPUCommandBuffer(cmd);
+
+        // Wait for GPU to finish rendering
+        SDL_WaitForGPUIdle(gpu_device);
     }
 
     void handleEvent(const SDL_Event& event) {
@@ -471,7 +474,8 @@ public:
                 last_time = current_time;
             }
 
-            SDL_Delay(33);
+            // Vsync and GPU wait handle timing, minimal delay
+            SDL_Delay(1);
         }
     }
 

@@ -32,10 +32,10 @@ const float u_fog = 1.0;
 const float u_specular = 0.5;
 const float u_light_e_w = 1.0;
 
-// Quintic fade (C2 smooth)
-vec2 quinticInterpolation(vec2 t)
+// Cubic fade (C1 smooth) - more performant
+vec2 cubicInterpolation(vec2 t)
 {
-    return t*t*t*(t*(t*6.0 - 15.0) + 10.0);
+    return t*t*(3.0 - 2.0*t);
 }
 
 // Random hash
@@ -46,23 +46,26 @@ vec2 hash2(vec2 p)
     return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
 }
 
-// 2D Perlin (gradient)
+// 2D Perlin (gradient) - Optimized
 float perlinNoise(vec2 P)
 {
     vec2 Pi = floor(P);
     vec2 Pf = P - Pi;
 
-    vec2 g00 = normalize(hash2(Pi + vec2(0.0, 0.0)));
-    vec2 g10 = normalize(hash2(Pi + vec2(1.0, 0.0)));
-    vec2 g01 = normalize(hash2(Pi + vec2(0.0, 1.0)));
-    vec2 g11 = normalize(hash2(Pi + vec2(1.0, 1.0)));
+    // Get gradients from hash function (no normalization)
+    vec2 g00 = hash2(Pi + vec2(0.0, 0.0));
+    vec2 g10 = hash2(Pi + vec2(1.0, 0.0));
+    vec2 g01 = hash2(Pi + vec2(0.0, 1.0));
+    vec2 g11 = hash2(Pi + vec2(1.0, 1.0));
 
+    // Calculate noise contributions from each corner
     float n00 = dot(g00, Pf - vec2(0.0, 0.0));
     float n10 = dot(g10, Pf - vec2(1.0, 0.0));
     float n01 = dot(g01, Pf - vec2(0.0, 1.0));
     float n11 = dot(g11, Pf - vec2(1.0, 1.0));
 
-    vec2 u = quinticInterpolation(Pf);
+    // Interpolate using cubic fade
+    vec2 u = cubicInterpolation(Pf);
     float nx0 = mix(n00, n10, u.x);
     float nx1 = mix(n01, n11, u.x);
     float nxy = mix(nx0, nx1, u.y);
@@ -193,17 +196,19 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
 {
     float intersectionDistance = minDistance;
     float finalStepCount = 1.0;
+    float MAX_HEIGHT = 2.66;
+    
     for(int i = 0; i < u_max_steps; i++)
     {
-        vec3 pos = rayOrigin + intersectionDistance * rayDirection;
-        float height = pos.y - terrainHeightMap(pos, rayOrigin);
+        vec3 pos = rayOrigin + intersectionDistance*rayDirection;
+        float height = pos.y - terrainHeightMap(pos);
         if(abs(height) < (0.01 * intersectionDistance) || intersectionDistance > maxDistance)
         {
             finalStepCount = float(i);
             intPos = pos;
             break;
         }
-        if(pos.y > 2.66)
+        if(pos.y > MAX_HEIGHT)
         {
             finalStepCount = -1.0;
             intersectionDistance = -1.0;
@@ -247,7 +252,7 @@ void main()
 
     // Use camera from uniform buffer
     vec3 camPosition = vec3(camera.pos_x, camera.pos_y, camera.pos_z);
-    mat3 viewMatrix = computeViewMatrix(camera.yaw, camera.pitch);
+    mat3 viewMatrix = computeViewMatrix(camera.yaw, 0.0);
 
     vec3 rayOrigin = camPosition;
     vec3 rayDirection = normalize(viewMatrix * vec3(uv.xy, 1.0));
