@@ -19,9 +19,9 @@ layout(set = 2, binding = 0) readonly buffer CameraParams {
 #define EPSILON 1e-10
 
 // Exposed variables
-const int u_max_steps = 500;
-const float u_max_distance = 20.0;
-const float u_fog = 1.0;
+const int u_max_steps = 100;
+const float u_max_distance = 40.0;
+const float u_fog = 0.75;
 const float u_specular = 0.5;
 const float u_light_e_w = 1.0;
 
@@ -75,7 +75,7 @@ float perlinNoise(vec2 P)
 float fbm(in vec2 uv)
 {
     float value = 0.;
-    float amplitude = 1.6;
+    float amplitude = 2.0;
     float freq = 1.0;
 
     for (int i = 0; i < 8; i++)
@@ -236,7 +236,7 @@ void main()
     float normalizedDistance = intersectionDistance / u_max_distance;
 
     float terrainHeight = intPos.y / 2.0;
-    terrainHeight = smoothstep(0.7, 0.78, terrainHeight);
+    terrainHeight = smoothstep(0.75, 0.9, terrainHeight);
 
     vec3 albedo = toLinear(vec3(0.5, 0.39, 0.18));
     vec3 finalColor = vec3(0.0);
