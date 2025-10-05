@@ -158,9 +158,11 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
 {
     float intersectionDistance = minDistance;
     float finalStepCount = 1.0;
+    float MAX_HEIGHT = 2.66;
+    
     for(int i = 0; i < u_max_steps; i++)
     {
-        vec3 pos = rayOrigin + intersectionDistance * rayDirection;
+        vec3 pos = rayOrigin + intersectionDistance*rayDirection;
         float height = pos.y - terrainHeightMap(pos);
         if(abs(height) < (0.01 * intersectionDistance) || intersectionDistance > maxDistance)
         {
@@ -168,7 +170,7 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
             intPos = pos;
             break;
         }
-        if(pos.y > 2.66)
+        if(pos.y > MAX_HEIGHT)
         {
             finalStepCount = -1.0;
             intersectionDistance = -1.0;
