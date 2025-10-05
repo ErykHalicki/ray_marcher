@@ -564,7 +564,6 @@ public:
                 last_time = current_time;
             }
 
-            SDL_Delay(33);
         }
     }
 
