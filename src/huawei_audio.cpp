@@ -450,7 +450,7 @@ public:
 
                 SDL_BindGPUVertexBuffers(pass, 0, &vbinding, 1);
 
-                SDL_GPUBuffer* storage_buffers[] = {camera_buffer, audio_buffer};
+                SDL_GPUBuffer* storage_buffers[] = {audio_buffer, camera_buffer};
                 SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 2);
 
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
