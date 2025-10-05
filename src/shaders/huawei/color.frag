@@ -21,7 +21,7 @@ layout(set = 2, binding = 0) readonly buffer CameraParams {
 // Exposed variables
 const int u_max_steps = 500;
 const float u_max_distance = 20.0;
-const float u_fog = 1.0;
+const float u_fog = 0.3;
 const float u_specular = 0.5;
 const float u_light_e_w = 1.0;
 
@@ -71,28 +71,35 @@ float perlinNoise(vec2 P)
     return nxy*0.5+0.5;
 }
 
-// Fractional Brownian Motion
-float fbm(in vec2 uv)
+// Fractional Brownian Motion with distance-based amplitude
+float fbm(in vec2 uv, float distanceFromCamera)
 {
     float value = 0.;
     float amplitude = 1.6;
     float freq = 1.0;
 
+    // Normalize distance (0-20 range)
+    float distanceFactor = clamp(distanceFromCamera / 20.0, 0.0, 1.0);
+
     for (int i = 0; i < 8; i++)
     {
-        value += perlinNoise(uv * freq) * amplitude;
+        // Boost lower octaves (later iterations) with distance
+        // Higher octave index = lower frequency = broader features
+        float octaveBoost = 1.0 + distanceFactor * float(i) * 0.7;
+
+        value += perlinNoise(uv * freq) * amplitude * octaveBoost;
         amplitude *= 0.4;
         freq *= 2.0;
     }
-    // max = 1.6 + (1.6 * 0.4) + (1.6 * 0.4^2) + (1.6 * 0.4^3) ...
-    // max = 2.66491904
 
     return value;
 }
 
 float terrainHeightMap(in vec3 uv)
 {
-    float height = fbm(uv.xz*0.5);
+    // Calculate distance from camera origin for FBM modulation
+    float distanceFromCamera = length(vec2(uv.x, uv.z) - vec2(camera.pos_x, camera.pos_z));
+    float height = fbm(uv.xz*0.5, distanceFromCamera);
     return height;
 }
 
@@ -162,6 +169,14 @@ vec3 tosRGB(vec3 inputColor)
     return inputColor;
 }
 
+// HSV to RGB conversion
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, in float maxDistance, inout vec3 intPos, inout float seed)
 {
     float intersectionDistance = minDistance;
@@ -192,8 +207,6 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
 
 vec3 computeShading(vec3 terrainColor, vec3 lightColor, vec3 normal, vec3 lightDirection, vec3 viewDirection, vec3 skyColor, float terrainHeight)
 {
-    terrainColor = mix(terrainColor, vec3(1.0), terrainHeight);
-
     vec3 halfVector = normalize(lightDirection + viewDirection);
     float NdH = max(dot(normal, halfVector), 0.0);
     float NdL = max(dot(normal, lightDirection), 0.0);
@@ -238,7 +251,6 @@ void main()
     float terrainHeight = intPos.y / 2.0;
     terrainHeight = smoothstep(0.7, 0.78, terrainHeight);
 
-    vec3 albedo = toLinear(vec3(0.5, 0.39, 0.18));
     vec3 finalColor = vec3(0.0);
 
     vec3 skyColor = mix(vec3(0.3098, 0.5608, 0.9137), vec3(0.9961, 0.9725, 0.9059), max(dot(rayDirection, lightDirection) * 0.5 + 0.5, 0.0));
@@ -251,6 +263,20 @@ void main()
         vec3 rayTerrainIntersection = rayOrigin + rayDirection * intersectionDistance;
         vec3 terrainNormal = getNormal(rayTerrainIntersection, intersectionDistance);
         vec3 viewDirection = normalize(rayOrigin - rayTerrainIntersection);
+
+        // Calculate distance from camera for color
+        float distanceFromCamera = length(rayTerrainIntersection - camPosition);
+
+        // Map distance to hue: red (0.0) for close, blue (0.667) for far
+        // Using max distance of 15 for faster color transition
+        float hue = smoothstep(0.0, 15.0, distanceFromCamera) * 0.667;
+
+        // Invert hue for mountain peaks
+        hue = mix(hue, 0.667 - hue, terrainHeight);
+
+        // Create HSV color: varying hue, high saturation, bright value
+        vec3 hsvColor = vec3(hue, 0.85, 0.95);
+        vec3 albedo = toLinear(hsv2rgb(hsvColor));
 
         vec3 terrainShading = computeShading(albedo, lightColor, terrainNormal, lightDirection, viewDirection, skyColor, terrainHeight);
 
