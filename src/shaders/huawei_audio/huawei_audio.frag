@@ -87,7 +87,7 @@ float fbm(in vec2 uv, vec3 camPos)
 
     for (int i = 0; i < 8; i++)
     {
-        value += perlinNoise(uv * freq, vec2(camPos.x, camPos.y)) * amplitude;
+        value += perlinNoise(uv * freq) * amplitude;
         amplitude *= 0.4;
         freq *= 2.0;
     }
@@ -125,7 +125,7 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     float farWeight = smoothstep(7.0, 14.0, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
 
-	audioMultiplier *= distance(vec2(camPos.x, camPos.y), terrainPosXZ) / 10;
+	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.y), terrainPosXZ) / 10);
 
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);
