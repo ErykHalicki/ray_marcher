@@ -17,6 +17,7 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
     float bass;
     float mid;
     float high;
+    float padding;
 } audio;
 
 // Constants
@@ -125,7 +126,7 @@ float terrainHeightMap(in vec3 uv, in vec3 camPos)
     float farWeight = smoothstep(7.0, 14.0, distanceFromCamera);
     audioMultiplier += farWeight * audio.bass * 1.5;
 
-	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.y), terrainPosXZ) / 10);
+	audioMultiplier *= min(0.25, distance(vec2(camPos.x, camPos.z), terrainPosXZ) / 10);
 
     // Apply audio modulation to height
     height *= (1.0 + audioMultiplier);
