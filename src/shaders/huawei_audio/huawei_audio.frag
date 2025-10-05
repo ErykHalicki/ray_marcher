@@ -20,6 +20,16 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
     float padding;
 } audio;
 
+// Color parameters from CPU
+layout(set = 2, binding = 2) readonly buffer ColorParams {
+    float max_color_distance;
+    float saturation;
+    float brightness;
+    float num_stops;
+    // Gradient stops (position, hue) pairs, max 8 stops
+    vec2 stops[8];
+} color_config;
+
 // Constants
 #define PI 3.14159
 #define PI2 6.28318
@@ -297,12 +307,28 @@ void main()
         // Calculate distance from camera for HSV color
         float distanceFromCamera = length(rayTerrainIntersection - camPosition);
 
-        // Map distance to hue: red (0.0) for close, blue (0.667) for far
-        // Using max distance of 15 for faster color transition
-        float hue = smoothstep(0.0, 15.0, distanceFromCamera) * 0.667;
+        // Normalize distance to 0-1 range using config
+        float t = clamp(distanceFromCamera / color_config.max_color_distance, 0.0, 1.0);
 
-        // Create HSV color: varying hue, very high saturation, bright value
-        vec3 hsvColor = vec3(hue, 1.0, 0.95);
+        // Interpolate hue based on gradient stops
+        float hue = 0.0;
+        int num_stops = int(color_config.num_stops);
+
+        for (int i = 0; i < num_stops - 1; i++) {
+            float pos1 = color_config.stops[i].x;
+            float pos2 = color_config.stops[i + 1].x;
+
+            if (t >= pos1 && t <= pos2) {
+                float hue1 = color_config.stops[i].y;
+                float hue2 = color_config.stops[i + 1].y;
+                float segment_t = (t - pos1) / (pos2 - pos1);
+                hue = mix(hue1, hue2, segment_t);
+                break;
+            }
+        }
+
+        // Create HSV color using config values
+        vec3 hsvColor = vec3(hue, color_config.saturation, color_config.brightness);
         vec3 albedo = toLinear(hsv2rgb(hsvColor));
 
         vec3 terrainShading = computeShading(albedo, lightColor, terrainNormal, lightDirection, viewDirection, skyColor, terrainHeight);

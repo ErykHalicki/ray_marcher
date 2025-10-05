@@ -7,6 +7,10 @@ find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 
+# Find yaml-cpp
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(YAML_CPP REQUIRED yaml-cpp)
+
 # Find FFTW3 - handle macOS Homebrew installation
 if(APPLE)
     # Check for Homebrew installation paths
@@ -162,12 +166,12 @@ else()
 endif()
 
 add_executable(huawei_audio src/huawei_audio.cpp src/AudioAnalyzer.cpp)
-target_include_directories(huawei_audio PRIVATE ${FFTW_INCLUDE_DIRS})
+target_include_directories(huawei_audio PRIVATE ${FFTW_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIRS})
 if(APPLE AND FFTW_LIBRARY_DIRS)
     target_link_directories(huawei_audio PRIVATE ${FFTW_LIBRARY_DIRS})
-    target_link_libraries(huawei_audio SDL3::SDL3 fftw3)
+    target_link_libraries(huawei_audio SDL3::SDL3 fftw3 ${YAML_CPP_LIBRARIES})
 else()
-    target_link_libraries(huawei_audio SDL3::SDL3 ${FFTW_LIBRARIES})
+    target_link_libraries(huawei_audio SDL3::SDL3 ${FFTW_LIBRARIES} ${YAML_CPP_LIBRARIES})
 endif()
 if(GLSLANG_VALIDATOR)
     add_dependencies(huawei_audio shaders)
