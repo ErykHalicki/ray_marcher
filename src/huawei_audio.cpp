@@ -153,8 +153,8 @@ public:
     }
 
     bool createPipeline() {
-        std::string vert_path = std::string("src/shaders/huawei/huawei.vert") + getShaderExtension();
-        std::string frag_path = std::string("src/shaders/huawei/huawei.frag") + getShaderExtension();
+        std::string vert_path = std::string("src/shaders/huawei_audio/huawei_audio.vert") + getShaderExtension();
+        std::string frag_path = std::string("src/shaders/huawei_audio/huawei_audio.frag") + getShaderExtension();
 
         auto vert_code = loadShader(vert_path.c_str());
         auto frag_code = loadShader(frag_path.c_str());

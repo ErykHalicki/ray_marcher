@@ -80,6 +80,18 @@ compile_shader(
     ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
 )
 
+compile_shader(
+    ${SHADER_DIR}/huawei_audio/huawei_audio.vert
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.spv
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.metal
+)
+
+compile_shader(
+    ${SHADER_DIR}/huawei_audio/huawei_audio.frag
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.spv
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.metal
+)
+
 # Custom target to build all shaders
 if(GLSLANG_VALIDATOR)
     set(SHADER_OUTPUTS
@@ -87,6 +99,8 @@ if(GLSLANG_VALIDATOR)
         ${COMPILED_SHADER_DIR}/color.frag.spv
         ${COMPILED_SHADER_DIR}/huawei/huawei.vert.spv
         ${COMPILED_SHADER_DIR}/huawei/huawei.frag.spv
+        ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.spv
+        ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.spv
     )
 
     if(SPIRV_CROSS)
@@ -95,6 +109,8 @@ if(GLSLANG_VALIDATOR)
             ${COMPILED_SHADER_DIR}/color.frag.metal
             ${COMPILED_SHADER_DIR}/huawei/huawei.vert.metal
             ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
+            ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.metal
+            ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.metal
         )
     endif()
 
