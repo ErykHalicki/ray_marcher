@@ -4,7 +4,7 @@ layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 fragColor;
 
 // Camera parameters from CPU
-layout(set = 0, binding = 0) readonly buffer CameraParams {
+layout(set = 2, binding = 0) readonly buffer CameraParams {
     float pos_x;
     float pos_y;
     float pos_z;
