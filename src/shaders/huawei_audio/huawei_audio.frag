@@ -299,17 +299,17 @@ vec3 stars(vec2 fragUV) {
 
   float dist = sqrt(x*x + y*y);
   float spacing = 0.2;
-  float line_width = 0.1;
-  float speed = 0.25;
+  float line_width = 0.4;
+  float speed = 0.1;
 
   // Correctly animate the distance before creating the pattern
-  float animated_dist = dist - mod(audio.time * speed, spacing);
+  float animated_dist = dist - mod(camera.time * speed, spacing);
   float pattern = fract(animated_dist / spacing);
 
   float circle = smoothstep(0.5 - line_width, 0.5, pattern) - smoothstep(0.5, 0.5 + line_width, pattern);
 
   // Rainbow color calculation
-  float hue = mod(audio.time * 0.1, 1.0); // Slower speed for color transition
+  float hue = mod(camera.time * 0.1, 1.0); // Slower speed for color transition
   vec3 hsv = vec3(hue, 1.0, 1.0); // Full saturation and brightness
   vec3 rgb = hsv2rgb(hsv);
 
