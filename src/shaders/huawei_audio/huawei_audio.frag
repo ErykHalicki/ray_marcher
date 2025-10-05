@@ -20,6 +20,7 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
     float mid;
     float high;
     float padding;
+	float time;
 } audio;
 
 // Color parameters from CPU
@@ -292,6 +293,29 @@ float generateStars(vec3 rayDir)
     return 0.0;
 }
 
+vec3 stars(vec2 fragUV) {
+  float x = fragUV.x - 0.5;
+  float y = fragUV.y;
+
+  float dist = sqrt(x*x + y*y);
+  float spacing = 0.2;
+  float line_width = 0.1;
+  float speed = 0.25;
+
+  // Correctly animate the distance before creating the pattern
+  float animated_dist = dist - mod(audio.time * speed, spacing);
+  float pattern = fract(animated_dist / spacing);
+
+  float circle = smoothstep(0.5 - line_width, 0.5, pattern) - smoothstep(0.5, 0.5 + line_width, pattern);
+
+  // Rainbow color calculation
+  float hue = mod(audio.time * 0.1, 1.0); // Slower speed for color transition
+  vec3 hsv = vec3(hue, 1.0, 1.0); // Full saturation and brightness
+  vec3 rgb = hsv2rgb(hsv);
+
+  return rgb * circle;
+}
+
 void main()
 {
     vec2 uv = fragUV * 2.0 - 1.0;
@@ -328,8 +352,9 @@ void main()
     vec3 skyColor = vec3(0.0);
 
     // Add stars to sky
-    float stars = generateStars(rayDirection);
-    finalColor = skyColor + vec3(stars);
+    // float stars = generateStars(rayDirection);
+    // finalColor = skyColor + vec3(stars);
+    finalColor = stars(fragUV);
 
     if (intersectionDistance < u_max_distance && rayCollision.y > 0.)
     {

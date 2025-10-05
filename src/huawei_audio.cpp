@@ -6,6 +6,7 @@
 #include <cmath>
 #include <array>
 #include <yaml-cpp/yaml.h>
+#include <ctime>
 #include "AudioAnalyzer.h"
 
 class HuaweiAudioDemo {
@@ -70,8 +71,8 @@ private:
         float bass;
         float mid;
         float high;
-        float padding;  // Alignment
-    };
+        float time;  
+	};
 
     struct ColorParams {
         float max_color_distance;
@@ -453,7 +454,7 @@ public:
         audio_analyzer.update();
         auto coeffs = audio_analyzer.getCoefficients();
 
-        AudioParams params = {coeffs[0], coeffs[1], coeffs[2], 0.0f};
+        AudioParams params = {coeffs[0], coeffs[1], coeffs[2], SDL_GetTicks() / 1000.0f};
 
         SDL_GPUTransferBufferCreateInfo transfer_info = {};
         transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
