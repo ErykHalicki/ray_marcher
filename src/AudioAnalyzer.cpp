@@ -164,19 +164,20 @@ AudioAnalyzer::FrequencyBands AudioAnalyzer::getFrequencyBands() {
         max_history.erase(max_history.begin());
     }
 
-    // Find the maximum value in the sliding window
-    float max_observed = 0.0f;
+    // Calculate rolling average of the sliding window
+    float max_average = 0.0f;
     for (float val : max_history) {
-        if (val > max_observed) {
-            max_observed = val;
-        }
+        max_average += val;
+    }
+    if (max_history.size() > 0) {
+        max_average /= max_history.size();
     }
 
-    // Normalize by the sliding window maximum
-    if (max_observed > 0.0f) {
-        bands.bass /= max_observed;
-        bands.mid /= max_observed;
-        bands.high /= max_observed;
+    // Normalize by the rolling average
+    if (max_average > 0.0f) {
+        bands.bass /= max_average;
+        bands.mid /= max_average;
+        bands.high /= max_average;
     }
 
     return bands;
