@@ -17,6 +17,7 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
     float bass;
     float mid;
     float high;
+    float padding;
 } audio;
 
 // Constants
