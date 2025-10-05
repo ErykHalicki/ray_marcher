@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFTW REQUIRED fftw3)
 
 # Find glslangValidator for shader compilation
 find_program(GLSLANG_VALIDATOR glslangValidator)
@@ -78,6 +80,18 @@ compile_shader(
     ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
 )
 
+compile_shader(
+    ${SHADER_DIR}/huawei_audio/huawei_audio.vert
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.spv
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.metal
+)
+
+compile_shader(
+    ${SHADER_DIR}/huawei_audio/huawei_audio.frag
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.spv
+    ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.metal
+)
+
 # Custom target to build all shaders
 if(GLSLANG_VALIDATOR)
     set(SHADER_OUTPUTS
@@ -85,6 +99,8 @@ if(GLSLANG_VALIDATOR)
         ${COMPILED_SHADER_DIR}/color.frag.spv
         ${COMPILED_SHADER_DIR}/huawei/huawei.vert.spv
         ${COMPILED_SHADER_DIR}/huawei/huawei.frag.spv
+        ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.spv
+        ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.spv
     )
 
     if(SPIRV_CROSS)
@@ -93,6 +109,8 @@ if(GLSLANG_VALIDATOR)
             ${COMPILED_SHADER_DIR}/color.frag.metal
             ${COMPILED_SHADER_DIR}/huawei/huawei.vert.metal
             ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
+            ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.vert.metal
+            ${COMPILED_SHADER_DIR}/huawei_audio/huawei_audio.frag.metal
         )
     endif()
 
@@ -112,4 +130,15 @@ add_executable(huawei src/huawei.cpp)
 target_link_libraries(huawei SDL3::SDL3)
 if(GLSLANG_VALIDATOR)
     add_dependencies(huawei shaders)
+endif()
+
+add_executable(audioTest src/audioTest.cpp)
+target_link_libraries(audioTest SDL3::SDL3 ${FFTW_LIBRARIES})
+target_include_directories(audioTest PRIVATE ${FFTW_INCLUDE_DIRS})
+
+add_executable(huawei_audio src/huawei_audio.cpp src/AudioAnalyzer.cpp)
+target_link_libraries(huawei_audio SDL3::SDL3 ${FFTW_LIBRARIES})
+target_include_directories(huawei_audio PRIVATE ${FFTW_INCLUDE_DIRS})
+if(GLSLANG_VALIDATOR)
+    add_dependencies(huawei_audio shaders)
 endif()
