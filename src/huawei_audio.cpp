@@ -460,6 +460,9 @@ public:
         }
 
         SDL_SubmitGPUCommandBuffer(cmd);
+
+        // Wait for GPU to finish rendering
+        SDL_WaitForGPUIdle(gpu_device);
     }
 
     void handleEvent(const SDL_Event& event) {
