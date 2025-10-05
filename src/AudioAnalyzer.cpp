@@ -173,6 +173,12 @@ AudioAnalyzer::FrequencyBands AudioAnalyzer::getFrequencyBands() {
         max_average /= max_history.size();
     }
 
+    // Set a minimum threshold to prevent over-amplification of quiet audio
+    const float min_threshold = 100.0f;  // Adjust based on your audio input levels
+    if (max_average < min_threshold) {
+        max_average = min_threshold;
+    }
+
     // Normalize by the rolling average
     if (max_average > 0.0f) {
         bands.bass /= max_average;
