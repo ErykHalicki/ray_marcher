@@ -26,10 +26,13 @@ endif()
 # Shader compilation function - generates both SPIR-V and MSL
 function(compile_shader SHADER_SOURCE SPIRV_OUTPUT MSL_OUTPUT)
     if(GLSLANG_VALIDATOR)
+        # Get the directory of the output file
+        get_filename_component(SPIRV_DIR ${SPIRV_OUTPUT} DIRECTORY)
+
         # Compile GLSL to SPIR-V
         add_custom_command(
             OUTPUT ${SPIRV_OUTPUT}
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/src/shaders
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${SPIRV_DIR}
             COMMAND ${GLSLANG_VALIDATOR} -V ${SHADER_SOURCE} -o ${SPIRV_OUTPUT}
             DEPENDS ${SHADER_SOURCE}
             COMMENT "Compiling GLSL to SPIR-V: ${SHADER_SOURCE}"
@@ -63,17 +66,33 @@ compile_shader(
     ${COMPILED_SHADER_DIR}/color.frag.metal
 )
 
+compile_shader(
+    ${SHADER_DIR}/huawei/huawei.vert
+    ${COMPILED_SHADER_DIR}/huawei/huawei.vert.spv
+    ${COMPILED_SHADER_DIR}/huawei/huawei.vert.metal
+)
+
+compile_shader(
+    ${SHADER_DIR}/huawei/huawei.frag
+    ${COMPILED_SHADER_DIR}/huawei/huawei.frag.spv
+    ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
+)
+
 # Custom target to build all shaders
 if(GLSLANG_VALIDATOR)
     set(SHADER_OUTPUTS
         ${COMPILED_SHADER_DIR}/color.vert.spv
         ${COMPILED_SHADER_DIR}/color.frag.spv
+        ${COMPILED_SHADER_DIR}/huawei/huawei.vert.spv
+        ${COMPILED_SHADER_DIR}/huawei/huawei.frag.spv
     )
 
     if(SPIRV_CROSS)
         list(APPEND SHADER_OUTPUTS
             ${COMPILED_SHADER_DIR}/color.vert.metal
             ${COMPILED_SHADER_DIR}/color.frag.metal
+            ${COMPILED_SHADER_DIR}/huawei/huawei.vert.metal
+            ${COMPILED_SHADER_DIR}/huawei/huawei.frag.metal
         )
     endif()
 
@@ -87,4 +106,10 @@ add_executable(color src/color.cpp)
 target_link_libraries(color SDL3::SDL3)
 if(GLSLANG_VALIDATOR)
     add_dependencies(color shaders)
+endif()
+
+add_executable(huawei src/huawei.cpp)
+target_link_libraries(huawei SDL3::SDL3)
+if(GLSLANG_VALIDATOR)
+    add_dependencies(huawei shaders)
 endif()
