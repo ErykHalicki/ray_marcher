@@ -197,6 +197,14 @@ vec3 tosRGB(vec3 inputColor)
     return inputColor;
 }
 
+// HSV to RGB conversion
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, in float maxDistance, inout vec3 intPos, inout float seed)
 {
     float intersectionDistance = minDistance;
@@ -227,8 +235,6 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
 
 vec3 computeShading(vec3 terrainColor, vec3 lightColor, vec3 normal, vec3 lightDirection, vec3 viewDirection, vec3 skyColor, float terrainHeight)
 {
-    terrainColor = mix(terrainColor, vec3(1.0), terrainHeight);
-
     vec3 halfVector = normalize(lightDirection + viewDirection);
     float NdH = max(dot(normal, halfVector), 0.0);
     float NdL = max(dot(normal, lightDirection), 0.0);
@@ -273,7 +279,6 @@ void main()
     float terrainHeight = intPos.y / 2.0;
     terrainHeight = smoothstep(0.7, 0.78, terrainHeight);
 
-    vec3 albedo = toLinear(vec3(0.5, 0.39, 0.18));
     vec3 finalColor = vec3(0.0);
 
     vec3 skyColor = mix(vec3(0.3098, 0.5608, 0.9137), vec3(0.9961, 0.9725, 0.9059), max(dot(rayDirection, lightDirection) * 0.5 + 0.5, 0.0));
@@ -286,6 +291,20 @@ void main()
         vec3 rayTerrainIntersection = rayOrigin + rayDirection * intersectionDistance;
         vec3 terrainNormal = getNormal(rayTerrainIntersection, intersectionDistance, rayOrigin);
         vec3 viewDirection = normalize(rayOrigin - rayTerrainIntersection);
+
+        // Calculate distance from camera for HSV color
+        float distanceFromCamera = length(rayTerrainIntersection - camPosition);
+
+        // Map distance to hue: red (0.0) for close, blue (0.667) for far
+        // Using max distance of 15 for faster color transition
+        float hue = smoothstep(0.0, 15.0, distanceFromCamera) * 0.667;
+
+        // Invert hue for mountain peaks
+        hue = mix(hue, 0.667 - hue, terrainHeight);
+
+        // Create HSV color: varying hue, high saturation, bright value
+        vec3 hsvColor = vec3(hue, 0.85, 0.95);
+        vec3 albedo = toLinear(hsv2rgb(hsvColor));
 
         vec3 terrainShading = computeShading(albedo, lightColor, terrainNormal, lightDirection, viewDirection, skyColor, terrainHeight);
 
