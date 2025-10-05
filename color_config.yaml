@@ -1,7 +1,7 @@
 # Color configuration for huawei_audio visualizer
 # Hue reference: 0.0=red, 0.083=orange, 0.167=yellow, 0.333=green, 0.5=cyan, 0.667=blue, 0.833=magenta
 
-max_color_distance: 15.0
+max_color_distance: 40.0
 saturation: 1.0
 brightness: 0.95
 

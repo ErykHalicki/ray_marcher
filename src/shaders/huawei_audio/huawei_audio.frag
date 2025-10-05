@@ -10,7 +10,8 @@ layout(set = 2, binding = 0) readonly buffer CameraParams {
     float pos_z;
     float yaw;
     float pitch;
-    // float time;
+    float time;
+    float padding[2];
 } camera;
 
 // Audio parameters from CPU
@@ -54,10 +55,10 @@ vec2 cubicInterpolation(vec2 t)
 vec2 hash2(vec2 p)
 {
     // Add slowly changing time offset to create gradual changes
-    // float timeOffset = camera.time * 0.05;
+    float timeOffset = camera.time * 0.00005;
     p = vec2(dot(p, vec2(127.1, 311.7)),
              dot(p, vec2(269.5, 183.3)));
-    return -1.0 + 2.0 * fract(sin(p ) * 43758.5453123);
+    return -1.0 + 2.0 * fract(sin(p + timeOffset) * 43758.5453123);
 }
 
 float hash1(inout float seed)

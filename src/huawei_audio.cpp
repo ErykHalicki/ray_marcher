@@ -63,7 +63,7 @@ private:
         float yaw;
         float pitch;
         float time;
-        float padding[2];  // Alignment
+        float padding[2];  // Align to 32 bytes
     };
 
     struct AudioParams {
@@ -593,13 +593,8 @@ public:
 
                 SDL_BindGPUVertexBuffers(pass, 0, &vbinding, 1);
 
-#ifdef __APPLE__
-                // spirv-cross reorders buffers when converting to Metal
-                SDL_GPUBuffer* storage_buffers[] = {color_buffer, audio_buffer, camera_buffer};
-#else
-                // SPIR-V on Linux preserves the original binding order
+                // Metal and SPIR-V now match: camera (0), audio (1), color (2)
                 SDL_GPUBuffer* storage_buffers[] = {camera_buffer, audio_buffer, color_buffer};
-#endif
                 SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 3);
 
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
