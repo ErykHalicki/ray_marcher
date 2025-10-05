@@ -1,5 +1,10 @@
 #version 450
 
+layout(set = 0, binding = 0) readonly buffer FBMParams {
+  float amplitude;
+  float frequency;
+} fbmParams;
+
 float rand(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233)) * 43758.5453));
 }
@@ -24,8 +29,8 @@ float perlin(vec2 p) {
 
 float fbm(vec2 p) {
   float value = 0.0;
-  float amplitude = 10.0;
-  float frequency = 0.05;
+  float amplitude = fbmParams.amplitude;
+  float frequency = fbmParams.frequency;
   
   int octaves = 4;
   for (int i = 0; i < octaves; i++) {

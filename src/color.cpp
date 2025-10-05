@@ -14,10 +14,20 @@ private:
     SDL_GPUBuffer* uniform_buffer = nullptr;
 
     bool running = true;
+    float amplitude = 10.0f;
+    float frequency = 0.05f;
+
+    Uint64 last_time = 0;
+    int frame_count = 0;
 
     struct Vertex {
         float x, y;
         float u, v;
+    };
+
+    struct FBMParams {
+        float amplitude;
+        float frequency;
     };
 
     std::vector<uint8_t> loadShader(const char* filename) {
@@ -101,6 +111,7 @@ public:
         }
 
         createVertexBuffer();
+        createUniformBuffer();
         return true;
     }
 
@@ -145,7 +156,7 @@ public:
         frag_info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         frag_info.num_samplers = 0;
         frag_info.num_storage_textures = 0;
-        frag_info.num_storage_buffers = 0;
+        frag_info.num_storage_buffers = 1;
         frag_info.num_uniform_buffers = 0;
 
         SDL_GPUShader* frag_shader = SDL_CreateGPUShader(gpu_device, &frag_info);
@@ -257,7 +268,49 @@ public:
         }
     }
 
+    void createUniformBuffer() {
+        SDL_GPUBufferCreateInfo buffer_info = {};
+        buffer_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
+        buffer_info.size = sizeof(FBMParams);
+
+        uniform_buffer = SDL_CreateGPUBuffer(gpu_device, &buffer_info);
+    }
+
+    void updateUniformBuffer() {
+        if (!uniform_buffer) return;
+
+        FBMParams params = {amplitude, frequency};
+
+        SDL_GPUTransferBufferCreateInfo transfer_info = {};
+        transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_info.size = sizeof(FBMParams);
+
+        SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_info);
+        void* data = SDL_MapGPUTransferBuffer(gpu_device, transfer, false);
+        SDL_memcpy(data, &params, sizeof(FBMParams));
+        SDL_UnmapGPUTransferBuffer(gpu_device, transfer);
+
+        SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(gpu_device);
+        SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTransferBufferLocation src = {};
+        src.transfer_buffer = transfer;
+        src.offset = 0;
+
+        SDL_GPUBufferRegion dst = {};
+        dst.buffer = uniform_buffer;
+        dst.offset = 0;
+        dst.size = sizeof(FBMParams);
+
+        SDL_UploadToGPUBuffer(copy_pass, &src, &dst, false);
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+        SDL_ReleaseGPUTransferBuffer(gpu_device, transfer);
+    }
+
     void render() {
+        updateUniformBuffer();
+
         SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(gpu_device);
         if (!cmd) return;
 
@@ -276,14 +329,18 @@ public:
 
             SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, nullptr);
 
-            if (pipeline && vertex_buffer) {
+            if (pipeline && vertex_buffer && uniform_buffer) {
                 SDL_BindGPUGraphicsPipeline(pass, pipeline);
 
-                SDL_GPUBufferBinding binding = {};
-                binding.buffer = vertex_buffer;
-                binding.offset = 0;
+                SDL_GPUBufferBinding vbinding = {};
+                vbinding.buffer = vertex_buffer;
+                vbinding.offset = 0;
 
-                SDL_BindGPUVertexBuffers(pass, 0, &binding, 1);
+                SDL_BindGPUVertexBuffers(pass, 0, &vbinding, 1);
+
+                SDL_GPUBuffer* storage_buffers[] = {uniform_buffer};
+                SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 1);
+
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
             }
 
@@ -300,12 +357,36 @@ public:
             if (event.key.key == SDLK_ESCAPE || event.key.key == SDLK_Q) {
                 running = false;
             }
+            // Amplitude controls (Up/Down arrows)
+            else if (event.key.key == SDLK_UP) {
+                amplitude += 1.0f;
+                std::cout << "Amplitude: " << amplitude << ", Frequency: " << frequency << "\n";
+            }
+            else if (event.key.key == SDLK_DOWN) {
+                amplitude = std::max(0.1f, amplitude - 1.0f);
+                std::cout << "Amplitude: " << amplitude << ", Frequency: " << frequency << "\n";
+            }
+            // Frequency controls (Left/Right arrows)
+            else if (event.key.key == SDLK_RIGHT) {
+                frequency += 0.01f;
+                std::cout << "Amplitude: " << amplitude << ", Frequency: " << frequency << "\n";
+            }
+            else if (event.key.key == SDLK_LEFT) {
+                frequency = std::max(0.01f, frequency - 0.01f);
+                std::cout << "Amplitude: " << amplitude << ", Frequency: " << frequency << "\n";
+            }
         }
     }
 
     void run() {
         std::cout << "Colored UV Frame - GPU Demo\n";
-        std::cout << "Press ESC or Q to quit\n";
+        std::cout << "Controls:\n";
+        std::cout << "  Up/Down arrows: Adjust amplitude\n";
+        std::cout << "  Left/Right arrows: Adjust frequency\n";
+        std::cout << "  ESC or Q: Quit\n";
+        std::cout << "Initial - Amplitude: " << amplitude << ", Frequency: " << frequency << "\n";
+
+        last_time = SDL_GetTicks();
 
         while (running) {
             SDL_Event event;
@@ -314,6 +395,19 @@ public:
             }
 
             render();
+
+            frame_count++;
+            Uint64 current_time = SDL_GetTicks();
+            Uint64 elapsed = current_time - last_time;
+
+            // Print FPS every second
+            if (elapsed >= 1000) {
+                float fps = frame_count / (elapsed / 1000.0f);
+                std::cout << "FPS: " << fps << " (" << (1000.0f / fps) << " ms/frame)\n";
+                frame_count = 0;
+                last_time = current_time;
+            }
+
             SDL_Delay(16);
         }
     }
@@ -321,6 +415,9 @@ public:
     ~ColoredUVDemo() {
         if (vertex_buffer) {
             SDL_ReleaseGPUBuffer(gpu_device, vertex_buffer);
+        }
+        if (uniform_buffer) {
+            SDL_ReleaseGPUBuffer(gpu_device, uniform_buffer);
         }
         if (pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(gpu_device, pipeline);
