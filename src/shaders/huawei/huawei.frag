@@ -3,6 +3,15 @@
 layout(location = 0) in vec2 fragUV;
 layout(location = 0) out vec4 fragColor;
 
+// Camera parameters from CPU
+layout(set = 0, binding = 0) readonly buffer CameraParams {
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    float yaw;
+    float pitch;
+} camera;
+
 // Constants
 #define PI 3.14159
 #define PI2 6.28318
@@ -15,7 +24,6 @@ const float u_max_distance = 20.0;
 const float u_fog = 1.0;
 const float u_specular = 0.5;
 const float u_light_e_w = 1.0;
-const float u_dolly = 0.0;
 
 // Quintic fade (C2 smooth)
 vec2 quinticInterpolation(vec2 t)
@@ -110,6 +118,26 @@ mat3 computeLookAtMatrix(vec3 cameraOrigin, vec3 target, float roll)
     return mat3(uu, vv, ww);
 }
 
+mat3 computeViewMatrix(float yaw, float pitch)
+{
+    // Create rotation matrix from yaw and pitch
+    float cy = cos(yaw);
+    float sy = sin(yaw);
+    float cp = cos(pitch);
+    float sp = sin(pitch);
+
+    // Right vector
+    vec3 right = vec3(cy, 0.0, -sy);
+
+    // Up vector (accounting for pitch)
+    vec3 up = vec3(sy * sp, cp, cy * sp);
+
+    // Forward vector
+    vec3 forward = vec3(sy * cp, sp, cy * cp);
+
+    return mat3(right, up, forward);
+}
+
 vec3 toLinear(vec3 inputColor)
 {
     inputColor.x = pow(inputColor.x, 2.2);
@@ -181,14 +209,12 @@ void main()
     vec3 lightDirection = normalize(ligthPosition);
     vec3 lightColor = toLinear(vec3(0.99, 0.84, 0.43));
 
-    vec3 camPosition = vec3(0.0, 2.0, 0.0);
-    camPosition.z += u_dolly;
-    vec3 camTarget = vec3(0.0, 0.0, 25.0);
-
-    mat3 lookAtMatrix = computeLookAtMatrix(camPosition, camTarget, 0.0);
+    // Use camera from uniform buffer
+    vec3 camPosition = vec3(camera.pos_x, camera.pos_y, camera.pos_z);
+    mat3 viewMatrix = computeViewMatrix(camera.yaw, camera.pitch);
 
     vec3 rayOrigin = camPosition;
-    vec3 rayDirection = normalize(lookAtMatrix * vec3(uv.xy, 1.0));
+    vec3 rayDirection = normalize(viewMatrix * vec3(uv.xy, 1.0));
 
     vec3 intPos;
     vec2 rayCollision = rayMarching(rayOrigin, rayDirection, 0.1, u_max_distance, intPos);

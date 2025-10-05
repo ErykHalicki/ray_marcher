@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cmath>
 
 class HuaweiDemo {
 private:
@@ -10,14 +11,41 @@ private:
     SDL_GPUDevice* gpu_device = nullptr;
     SDL_GPUGraphicsPipeline* pipeline = nullptr;
     SDL_GPUBuffer* vertex_buffer = nullptr;
+    SDL_GPUBuffer* camera_buffer = nullptr;
     bool running = true;
 
     Uint64 last_time = 0;
     int frame_count = 0;
 
+    // Camera state
+    float cam_x = 0.0f;
+    float cam_y = 2.0f;
+    float cam_z = 0.0f;
+    float cam_yaw = 0.0f;
+    float cam_pitch = 0.0f;
+
+    // Mouse state
+    bool mouse_captured = false;
+    float mouse_sensitivity = 0.002f;
+
+    // Keyboard state
+    bool key_w = false;
+    bool key_s = false;
+    bool key_a = false;
+    bool key_d = false;
+    bool key_space = false;
+    bool key_shift = false;
+
     struct Vertex {
         float x, y;
         float u, v;
+    };
+
+    struct CameraParams {
+        float pos_x, pos_y, pos_z;
+        float yaw;
+        float pitch;
+        float padding[3];  // Alignment
     };
 
     std::vector<uint8_t> loadShader(const char* filename) {
@@ -99,6 +127,7 @@ public:
         }
 
         createVertexBuffer();
+        createCameraBuffer();
         return true;
     }
 
@@ -139,7 +168,7 @@ public:
         frag_info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         frag_info.num_samplers = 0;
         frag_info.num_storage_textures = 0;
-        frag_info.num_storage_buffers = 0;
+        frag_info.num_storage_buffers = 1;
         frag_info.num_uniform_buffers = 0;
 
         SDL_GPUShader* frag_shader = SDL_CreateGPUShader(gpu_device, &frag_info);
@@ -245,7 +274,88 @@ public:
         }
     }
 
+    void createCameraBuffer() {
+        SDL_GPUBufferCreateInfo buffer_info = {};
+        buffer_info.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
+        buffer_info.size = sizeof(CameraParams);
+
+        camera_buffer = SDL_CreateGPUBuffer(gpu_device, &buffer_info);
+    }
+
+    void updateCameraBuffer() {
+        if (!camera_buffer) return;
+
+        CameraParams params = {cam_x, cam_y, cam_z, cam_yaw, cam_pitch, {0, 0, 0}};
+
+        SDL_GPUTransferBufferCreateInfo transfer_info = {};
+        transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_info.size = sizeof(CameraParams);
+
+        SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(gpu_device, &transfer_info);
+        void* data = SDL_MapGPUTransferBuffer(gpu_device, transfer, false);
+        SDL_memcpy(data, &params, sizeof(CameraParams));
+        SDL_UnmapGPUTransferBuffer(gpu_device, transfer);
+
+        SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(gpu_device);
+        SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(cmd);
+
+        SDL_GPUTransferBufferLocation src = {};
+        src.transfer_buffer = transfer;
+        src.offset = 0;
+
+        SDL_GPUBufferRegion dst = {};
+        dst.buffer = camera_buffer;
+        dst.offset = 0;
+        dst.size = sizeof(CameraParams);
+
+        SDL_UploadToGPUBuffer(copy_pass, &src, &dst, false);
+        SDL_EndGPUCopyPass(copy_pass);
+        SDL_SubmitGPUCommandBuffer(cmd);
+        SDL_ReleaseGPUTransferBuffer(gpu_device, transfer);
+    }
+
+    void updateCamera(float delta_time) {
+        float move_speed = 5.0f * delta_time;
+
+        // Calculate forward and right vectors from yaw
+        float forward_x = sin(cam_yaw);
+        float forward_z = cos(cam_yaw);
+        float right_x = cos(cam_yaw);
+        float right_z = -sin(cam_yaw);
+
+        // WASD movement
+        if (key_w) {
+            cam_x += forward_x * move_speed;
+            cam_z += forward_z * move_speed;
+        }
+        if (key_s) {
+            cam_x -= forward_x * move_speed;
+            cam_z -= forward_z * move_speed;
+        }
+        if (key_a) {
+            cam_x -= right_x * move_speed;
+            cam_z -= right_z * move_speed;
+        }
+        if (key_d) {
+            cam_x += right_x * move_speed;
+            cam_z += right_z * move_speed;
+        }
+
+        // Vertical movement
+        if (key_space) {
+            cam_y += move_speed;
+        }
+        if (key_shift) {
+            cam_y -= move_speed;
+        }
+
+        // Clamp pitch
+        if (cam_pitch > 1.5f) cam_pitch = 1.5f;
+        if (cam_pitch < -1.5f) cam_pitch = -1.5f;
+    }
+
     void render() {
+        updateCameraBuffer();
         SDL_GPUCommandBuffer* cmd = SDL_AcquireGPUCommandBuffer(gpu_device);
         if (!cmd) return;
 
@@ -264,7 +374,7 @@ public:
 
             SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(cmd, &color_target, 1, nullptr);
 
-            if (pipeline && vertex_buffer) {
+            if (pipeline && vertex_buffer && camera_buffer) {
                 SDL_BindGPUGraphicsPipeline(pass, pipeline);
 
                 SDL_GPUBufferBinding vbinding = {};
@@ -272,6 +382,10 @@ public:
                 vbinding.offset = 0;
 
                 SDL_BindGPUVertexBuffers(pass, 0, &vbinding, 1);
+
+                SDL_GPUBuffer* storage_buffers[] = {camera_buffer};
+                SDL_BindGPUFragmentStorageBuffers(pass, 0, storage_buffers, 1);
+
                 SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
             }
 
@@ -288,20 +402,56 @@ public:
             if (event.key.key == SDLK_ESCAPE || event.key.key == SDLK_Q) {
                 running = false;
             }
+            if (event.key.key == SDLK_W) key_w = true;
+            if (event.key.key == SDLK_S) key_s = true;
+            if (event.key.key == SDLK_A) key_a = true;
+            if (event.key.key == SDLK_D) key_d = true;
+            if (event.key.key == SDLK_SPACE) key_space = true;
+            if (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT) key_shift = true;
+        } else if (event.type == SDL_EVENT_KEY_UP) {
+            if (event.key.key == SDLK_W) key_w = false;
+            if (event.key.key == SDLK_S) key_s = false;
+            if (event.key.key == SDLK_A) key_a = false;
+            if (event.key.key == SDLK_D) key_d = false;
+            if (event.key.key == SDLK_SPACE) key_space = false;
+            if (event.key.key == SDLK_LSHIFT || event.key.key == SDLK_RSHIFT) key_shift = false;
+        } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            if (!mouse_captured) {
+                SDL_SetWindowRelativeMouseMode(window, true);
+                mouse_captured = true;
+            }
+        } else if (event.type == SDL_EVENT_MOUSE_MOTION) {
+            if (mouse_captured) {
+                cam_yaw += event.motion.xrel * mouse_sensitivity;
+                cam_pitch -= event.motion.yrel * mouse_sensitivity;
+            }
         }
     }
 
     void run() {
         std::cout << "Huawei Ray Marcher\n";
-        std::cout << "Press ESC or Q to quit\n";
+        std::cout << "Controls:\n";
+        std::cout << "  Click to capture mouse\n";
+        std::cout << "  WASD: Move horizontally\n";
+        std::cout << "  Space/Shift: Move up/down\n";
+        std::cout << "  Mouse: Look around\n";
+        std::cout << "  ESC or Q: Quit\n";
 
         last_time = SDL_GetTicks();
+        Uint64 last_frame_time = SDL_GetPerformanceCounter();
 
         while (running) {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 handleEvent(event);
             }
+
+            // Calculate delta time
+            Uint64 current_frame_time = SDL_GetPerformanceCounter();
+            float delta_time = (current_frame_time - last_frame_time) / (float)SDL_GetPerformanceFrequency();
+            last_frame_time = current_frame_time;
+
+            updateCamera(delta_time);
 
             Uint64 frame_start = SDL_GetPerformanceCounter();
             render();
@@ -328,6 +478,9 @@ public:
     ~HuaweiDemo() {
         if (vertex_buffer) {
             SDL_ReleaseGPUBuffer(gpu_device, vertex_buffer);
+        }
+        if (camera_buffer) {
+            SDL_ReleaseGPUBuffer(gpu_device, camera_buffer);
         }
         if (pipeline) {
             SDL_ReleaseGPUGraphicsPipeline(gpu_device, pipeline);
