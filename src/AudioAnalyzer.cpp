@@ -150,17 +150,33 @@ AudioAnalyzer::FrequencyBands AudioAnalyzer::getFrequencyBands() {
         }
     }
 
-    // Average and normalize
+    // Average each band
     if (bass_count > 0) bands.bass = bass_sum / bass_count;
     if (mid_count > 0) bands.mid = mid_sum / mid_count;
     if (high_count > 0) bands.high = high_sum / high_count;
 
-    // Find max for normalization
-    float max_val = std::max({bands.bass, bands.mid, bands.high});
-    if (max_val > 0.0f) {
-        bands.bass /= max_val;
-        bands.mid /= max_val;
-        bands.high /= max_val;
+    // Track maximum in a sliding window (~5 seconds)
+    float current_max = std::max({bands.bass, bands.mid, bands.high});
+    max_history.push_back(current_max);
+
+    // Keep only the last ~5 seconds of history
+    if (max_history.size() > max_history_size) {
+        max_history.erase(max_history.begin());
+    }
+
+    // Find the maximum value in the sliding window
+    float max_observed = 0.0f;
+    for (float val : max_history) {
+        if (val > max_observed) {
+            max_observed = val;
+        }
+    }
+
+    // Normalize by the sliding window maximum
+    if (max_observed > 0.0f) {
+        bands.bass /= max_observed;
+        bands.mid /= max_observed;
+        bands.high /= max_observed;
     }
 
     return bands;
