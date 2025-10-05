@@ -19,8 +19,7 @@ layout(set = 2, binding = 1) readonly buffer AudioParams {
     float bass;
     float mid;
     float high;
-    float padding;
-	float time;
+	float smoothed_bass;
 } audio;
 
 // Color parameters from CPU
@@ -299,10 +298,11 @@ vec3 stars(vec2 fragUV) {
 
   float dist = sqrt(x*x + y*y);
   float spacing = 0.2;
-  float line_width = 0.4;
+  float line_width = 0.2 * max(1, audio.smoothed_bass);
   float speed = 0.1;
 
   // Correctly animate the distance before creating the pattern
+  vec3 booster = vec3(audio.smoothed_bass, audio.smoothed_bass, audio.smoothed_bass);
   float animated_dist = dist - mod(camera.time * speed, spacing);
   float pattern = fract(animated_dist / spacing);
 
@@ -313,7 +313,7 @@ vec3 stars(vec2 fragUV) {
   vec3 hsv = vec3(hue, 1.0, 1.0); // Full saturation and brightness
   vec3 rgb = hsv2rgb(hsv);
 
-  return rgb * circle;
+  return (rgb * circle) * booster;
 }
 
 void main()

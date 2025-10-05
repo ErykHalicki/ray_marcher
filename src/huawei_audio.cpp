@@ -52,6 +52,8 @@ private:
     float auto_direction_change_interval = 2.0f;
 
     // Audio analyzer
+    float smoothed_bass = 0.0f;
+    float bass_smoothing_factor = 0.25f;
     AudioAnalyzer audio_analyzer;
 
     struct Vertex {
@@ -71,7 +73,7 @@ private:
         float bass;
         float mid;
         float high;
-        float time;  
+        float smoothed_bass;  
 	};
 
     struct ColorParams {
@@ -454,7 +456,10 @@ public:
         audio_analyzer.update();
         auto coeffs = audio_analyzer.getCoefficients();
 
-        AudioParams params = {coeffs[0], coeffs[1], coeffs[2], SDL_GetTicks() / 1000.0f};
+        // Smooth the bass value
+        smoothed_bass = (1.0f - bass_smoothing_factor) * smoothed_bass + bass_smoothing_factor * coeffs[0];
+
+        AudioParams params = {coeffs[0], coeffs[1], coeffs[2], smoothed_bass};
 
         SDL_GPUTransferBufferCreateInfo transfer_info = {};
         transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
