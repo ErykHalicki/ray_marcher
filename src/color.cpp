@@ -71,7 +71,7 @@ public:
 
         window = SDL_CreateWindow(
             "Colored UV Frame - GPU",
-            800, 600,
+            800, 800,
             SDL_WINDOW_RESIZABLE
         );
 
