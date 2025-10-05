@@ -298,7 +298,7 @@ vec3 stars(vec2 fragUV) {
 
   float dist = sqrt(x*x + y*y);
   float spacing = 0.2;
-  float line_width = 0.2 * max(1, audio.smoothed_bass);
+  float line_width = 0.05 * max(1, audio.smoothed_bass);
   float speed = 0.1;
 
   // Correctly animate the distance before creating the pattern

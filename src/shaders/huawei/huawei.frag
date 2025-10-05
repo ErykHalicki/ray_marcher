@@ -222,6 +222,7 @@ void main()
 
     // Use camera from uniform buffer
     vec3 camPosition = vec3(camera.pos_x, camera.pos_y, camera.pos_z);
+    camPosition.y = max(terrainHeightMap(camPosition)+0.1,camPosition.y);
     mat3 viewMatrix = computeViewMatrix(camera.yaw, 0.0);
 
     vec3 rayOrigin = camPosition;

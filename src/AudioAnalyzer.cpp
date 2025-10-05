@@ -189,9 +189,9 @@ AudioAnalyzer::FrequencyBands AudioAnalyzer::getFrequencyBands() {
     float range = max_average - min_average;
 
     if (range > 0.0f) {
-        bands.bass = (bands.bass ) / range*2.5;
-        bands.mid = (bands.mid ) / range*5.0;
-        bands.high = (bands.high ) / range*5.0;
+        bands.bass = (bands.bass *2.5) / range;
+        bands.mid = (bands.mid *3.0) / range;
+        bands.high = (bands.high *3.0) / range;
     }
 
     return bands;
