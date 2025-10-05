@@ -315,7 +315,7 @@ public:
     }
 
     void updateCamera(float delta_time) {
-        float move_speed = 5.0f * delta_time;
+        float move_speed = 0.5f * delta_time;
 
         // Calculate forward and right vectors from yaw
         float forward_x = sin(cam_yaw);

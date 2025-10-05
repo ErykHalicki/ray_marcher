@@ -172,6 +172,7 @@ vec2 rayMarching(in vec3 rayOrigin, in vec3 rayDirection, in float minDistance, 
         {
             finalStepCount = -1.0;
             intersectionDistance = -1.0;
+            break;
         }
         intersectionDistance += 0.2 * height;
     }
