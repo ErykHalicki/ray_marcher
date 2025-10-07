@@ -293,7 +293,7 @@ float generateStars(vec3 rayDir)
 }
 
 vec3 stars(vec2 fragUV) {
-  float x = fragUV.x - 0.5;
+  float x = fragUV.x - 0.5 + camera.yaw;
   float y = fragUV.y;
 
   float dist = sqrt(x*x + y*y);
@@ -317,10 +317,10 @@ vec3 stars(vec2 fragUV) {
 }
 
 vec3 sky(vec2 fragUV) {
-  vec2 moon_center = vec2(0.75, 0.75);
-  float moon_radius = 0.10;
-  vec2 inner_moon_center = vec2(0.7, 0.7);
-  float inner_moon_radius = 0.06;
+  vec2 moon_center = vec2(0.75 - camera.yaw, 0.85);
+  float moon_radius = 0.08;
+  vec2 inner_moon_center = vec2(0.7 - camera.yaw, 0.8);
+  float inner_moon_radius = 0.07;
 
   float dist_from_moon = distance(fragUV, moon_center);
   float dist_from_inner = distance(fragUV, inner_moon_center);
@@ -332,7 +332,7 @@ vec3 sky(vec2 fragUV) {
 	// extra r + b to look purple-ish
 	brightness = vec3(intensity + 0.15, intensity, intensity + 0.25);
   } else {
-	float inv = 0.1 / (pow(2, dist_from_moon)); // pow(2, -1 * min(1, max(0, dist_from_moon))) - 0.75;
+	float inv = 0.025 / (pow(2, dist_from_moon)); // pow(2, -1 * min(1, max(0, dist_from_moon))) - 0.75;
 	brightness = vec3(inv*1.2, inv, inv*1.5);
   }
 
