@@ -325,19 +325,24 @@ vec3 sky(vec2 fragUV) {
   float dist_from_moon = distance(fragUV, moon_center);
   float dist_from_inner = distance(fragUV, inner_moon_center);
  
-  vec3 brightness;
   float hue = mod(camera.time * 0.1, 1.0);
   vec3 extra = hsv2rgb(vec3(hue, 1.0, 1.0));
 
-  if (dist_from_moon < moon_radius && !(dist_from_inner < inner_moon_radius)) {
-	float intensity = (0.8 - sqrt(dist_from_moon));
+  // Sky color (background)
+  float inv = 0.00025 / (pow(2, dist_from_moon));
+  vec3 sky_color = vec3(inv*1.2, inv, inv*1.5) * audio.smoothed_bass + extra * 0.1;
 
-	// extra r + b to look purple-ish
-	brightness = vec3(intensity + 0.15, intensity, intensity + 0.25) + extra;
-  } else {
-	float inv = 0.025 / (pow(2, dist_from_moon)); // pow(2, -1 * min(1, max(0, dist_from_moon))) - 0.75;
-	brightness = vec3(inv*1.2, inv, inv*1.5) * audio.smoothed_bass + extra * 0.1;
-  }
+  // Moon color
+  float intensity = 0.85 - 5*pow(dist_from_moon, 2);
+  vec3 moon_color = vec3(intensity + 0.15, intensity, intensity + 0.25) + extra;
+
+  // Fuzzy moon shape (crescent)
+  float outer_disk = 1.0 - smoothstep(moon_radius - 0.01, moon_radius + 0.01, dist_from_moon);
+  float inner_hole = smoothstep(inner_moon_radius - 0.01, inner_moon_radius + 0.01, dist_from_inner);
+  float moon_shape = outer_disk * inner_hole;
+
+  // Blend moon and sky
+  vec3 brightness = mix(sky_color, moon_color, moon_shape);
 
   return brightness + stars(fragUV);
 }
