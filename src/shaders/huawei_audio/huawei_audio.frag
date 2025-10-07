@@ -330,7 +330,7 @@ vec3 sky(vec2 fragUV) {
 
   // Sky color (background)
   float inv = 0.00025 / (pow(2, dist_from_moon));
-  vec3 sky_color = vec3(inv*1.2, inv, inv*1.5) * audio.smoothed_bass + extra * 0.1;
+  vec3 sky_color = vec3(inv*1.2, inv, inv*1.5) * audio.smoothed_bass + extra * 0.025;
 
   // Moon color
   float intensity = 0.85 - 5*pow(dist_from_moon, 2);
