@@ -488,6 +488,8 @@ public:
         SDL_ReleaseGPUTransferBuffer(gpu_device, transfer);
     }
 
+	float counter = 0.0f;
+
     void updateCamera(float delta_time) {
         float move_speed = 0.5f * delta_time;
 
@@ -501,33 +503,36 @@ public:
         float right_z = -sin(cam_yaw);
 
         // AUTO MOVEMENT
-        cam_x += forward_x * auto_direction_x * move_speed * 0.5f;
-        cam_y += auto_direction_y * move_speed * 0.5f;
-        cam_z += forward_z * auto_direction_z * move_speed * 0.5f;
-        cam_yaw += 0.2f * auto_yaw_direction * delta_time;  // Slowly spin yaw
+        // cam_x += forward_x * auto_direction_x * move_speed * 0.5f;
+        // cam_y += auto_direction_y * move_speed * 0.5f;
+        // cam_z += forward_z * auto_direction_z * move_speed * 0.5f;
+        // cam_yaw += 0.2f * auto_yaw_direction * delta_time;  // Slowly spin yaw
+
+		counter += delta_time / 5;
+		cam_yaw = std::sin(counter);
 
         // Update auto movement timer and randomly change direction
         auto_movement_timer += delta_time;
-        if (auto_movement_timer >= auto_direction_change_interval) {
-            auto_movement_timer = 0.0f;
+        // if (auto_movement_timer >= auto_direction_change_interval) {
+        //     auto_movement_timer = 0.0f;
 
-            // Set next random interval (0.5 - 4 seconds)
-            auto_direction_change_interval = 0.5f + static_cast<float>(rand()) / RAND_MAX * 3.5f;
+        //     // Set next random interval (0.5 - 4 seconds)
+        //     auto_direction_change_interval = 0.5f + static_cast<float>(rand()) / RAND_MAX * 3.5f;
 
-            // Randomly flip any subset of directions (or set to random if 0)
-            if (rand() % 2) {
-                auto_direction_x = (auto_direction_x == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_x * -1.0f;
-            }
-            if (rand() % 2) {
-                auto_direction_y = (auto_direction_y == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_y * -1.0f;
-            }
-            if (rand() % 2) {
-                auto_direction_z = (auto_direction_z == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_z * -1.0f;
-            }
-            if (rand() % 2) {
-                auto_yaw_direction = (auto_yaw_direction == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_yaw_direction * -1.0f;
-            }
-        }
+        //     // Randomly flip any subset of directions (or set to random if 0)
+        //     if (rand() % 2) {
+        //         auto_direction_x = (auto_direction_x == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_x * -1.0f;
+        //     }
+        //     if (rand() % 2) {
+        //         auto_direction_y = (auto_direction_y == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_y * -1.0f;
+        //     }
+        //     if (rand() % 2) {
+        //         auto_direction_z = (auto_direction_z == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_direction_z * -1.0f;
+        //     }
+        //     if (rand() % 2) {
+        //         auto_yaw_direction = (auto_yaw_direction == 0.0f) ? ((rand() % 2) ? 1.0f : -1.0f) : auto_yaw_direction * -1.0f;
+        //     }
+        // }
 
         // WASD movement
         if (key_w) {
