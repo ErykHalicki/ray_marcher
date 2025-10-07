@@ -316,6 +316,29 @@ vec3 stars(vec2 fragUV) {
   return (rgb * circle) * booster;
 }
 
+vec3 sky(vec2 fragUV) {
+  vec2 moon_center = vec2(0.75, 0.75);
+  float moon_radius = 0.10;
+  vec2 inner_moon_center = vec2(0.7, 0.7);
+  float inner_moon_radius = 0.06;
+
+  float dist_from_moon = distance(fragUV, moon_center);
+  float dist_from_inner = distance(fragUV, inner_moon_center);
+ 
+  vec3 brightness;
+  if (dist_from_moon < moon_radius && !(dist_from_inner < inner_moon_radius)) {
+	float intensity = 0.8 - sqrt(dist_from_moon);
+
+	// extra r + b to look purple-ish
+	brightness = vec3(intensity + 0.15, intensity, intensity + 0.25);
+  } else {
+	float inv = 0.1 / (pow(2, dist_from_moon)); // pow(2, -1 * min(1, max(0, dist_from_moon))) - 0.75;
+	brightness = vec3(inv*1.2, inv, inv*1.5);
+  }
+
+  return brightness + stars(fragUV);
+}
+
 void main()
 {
     vec2 uv = fragUV * 2.0 - 1.0;
@@ -354,7 +377,7 @@ void main()
     // Add stars to sky
     // float stars = generateStars(rayDirection);
     // finalColor = skyColor + vec3(stars);
-    finalColor = stars(fragUV);
+    finalColor = sky(fragUV);
 
     if (intersectionDistance < u_max_distance && rayCollision.y > 0.)
     {
