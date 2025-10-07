@@ -326,14 +326,17 @@ vec3 sky(vec2 fragUV) {
   float dist_from_inner = distance(fragUV, inner_moon_center);
  
   vec3 brightness;
+  float hue = mod(camera.time * 0.1, 1.0);
+  vec3 extra = hsv2rgb(vec3(hue, 1.0, 1.0));
+
   if (dist_from_moon < moon_radius && !(dist_from_inner < inner_moon_radius)) {
-	float intensity = 0.8 - sqrt(dist_from_moon);
+	float intensity = (0.8 - sqrt(dist_from_moon));
 
 	// extra r + b to look purple-ish
-	brightness = vec3(intensity + 0.15, intensity, intensity + 0.25);
+	brightness = vec3(intensity + 0.15, intensity, intensity + 0.25) + extra;
   } else {
 	float inv = 0.025 / (pow(2, dist_from_moon)); // pow(2, -1 * min(1, max(0, dist_from_moon))) - 0.75;
-	brightness = vec3(inv*1.2, inv, inv*1.5);
+	brightness = vec3(inv*1.2, inv, inv*1.5) * audio.smoothed_bass + extra * 0.1;
   }
 
   return brightness + stars(fragUV);
